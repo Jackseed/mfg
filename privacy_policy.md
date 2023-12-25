@@ -1,6 +1,6 @@
 ## Magic Friends Gatherings: Privacy policy
 
-Welcome to Magic Friends Gatherings for Android!
+Welcome to Magic Friends Gatherings!
 
 I hereby state, to the best of my knowledge and belief, that I have not programmed this app to collect any personally identifiable information. 
 All data used within the app (crews, crewmates, decks and games) are stored in a Firestore database, using Google's servers. 
