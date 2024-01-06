@@ -26,7 +26,7 @@ class ImgStruct extends FFFirebaseStruct {
       );
 
   static ImgStruct? maybeFromMap(dynamic data) =>
-      data is Map<String, dynamic> ? ImgStruct.fromMap(data) : null;
+      data is Map ? ImgStruct.fromMap(data.cast<String, dynamic>()) : null;
 
   Map<String, dynamic> toMap() => {
         'downloadURL': _downloadURL,

@@ -67,6 +67,23 @@ List<String> booleansToArray(
   return res;
 }
 
+DocumentReference fromDeckIdToRef(String docId) {
+// return docRef based on docId
+  return FirebaseFirestore.instance.collection('decks').doc(docId);
+}
+
+DocumentReference fromCrewmateIdToRef(
+  String crewmateId,
+  String crewId,
+) {
+// return docRef based on docId
+  return FirebaseFirestore.instance
+      .collection('crews')
+      .doc(crewId)
+      .collection('crewmates')
+      .doc(crewmateId);
+}
+
 List<String> fromDeckNamesToIds(
   List<String>? deckNames,
   List<DecksRecord>? decks,

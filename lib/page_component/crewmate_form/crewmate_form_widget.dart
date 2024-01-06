@@ -53,6 +53,7 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
       return existingName == 'empty' ? '' : existingName;
     }(widget.existingName));
     _model.nameInputFocusNode ??= FocusNode();
+
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
@@ -163,10 +164,12 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
             child: FFButtonWidget(
               onPressed: () async {
                 logFirebaseEvent('CREWMATE_FORM_COMP_SAVE_BTN_ON_TAP');
+                logFirebaseEvent('Button_validate_form');
                 if (_model.formKey.currentState == null ||
                     !_model.formKey.currentState!.validate()) {
                   return;
                 }
+                logFirebaseEvent('Button_firestore_query');
                 _model.crewmates = await queryCrewmatesRecordOnce(
                   parent: currentUserDocument?.crewRef,
                 );
@@ -175,17 +178,27 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                     .toList()
                     .contains(_model.nameInputController.text)) {
                   // Name already taken
+                  logFirebaseEvent('Button_Namealreadytaken');
                   setState(() {
                     _model.showSnackbar = true;
-                    _model.snackbarMessage = 'Name already taken';
+                    _model.snackbarMessage = valueOrDefault<String>(
+                      FFLocalizations.of(context).getVariableText(
+                        enText: 'Name already taken',
+                        frText: 'Pseudo déjà pris',
+                      ),
+                      'Name already taken',
+                    );
                   });
+                  logFirebaseEvent('Button_wait__delay');
                   await Future.delayed(const Duration(milliseconds: 4000));
+                  logFirebaseEvent('Button_update_component_state');
                   setState(() {
                     _model.showSnackbar = false;
                   });
                 } else {
                   if (widget.existingName != 'empty') {
                     // Get existing crewmate
+                    logFirebaseEvent('Button_Getexistingcrewmate');
                     _model.crewmateDocBeforeNameChange =
                         await queryCrewmatesRecordOnce(
                       parent: widget.crewRef,
@@ -196,6 +209,7 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                       singleRecord: true,
                     ).then((s) => s.firstOrNull);
                     // Update crewmate name
+                    logFirebaseEvent('Button_Updatecrewmatename');
 
                     await widget.crewmateRef!.update(createCrewmatesRecordData(
                       name: _model.nameInputController.text,
@@ -203,6 +217,7 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                     if (_model.crewmateDocBeforeNameChange?.userId != null &&
                         _model.crewmateDocBeforeNameChange?.userId != '') {
                       // Update user name
+                      logFirebaseEvent('Button_Updateusername');
 
                       await _model.crewmateDocBeforeNameChange!.userReference!
                           .update(createUsersRecordData(
@@ -210,14 +225,22 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                       ));
                     }
                     // Crewmate updated!
+                    logFirebaseEvent('Button_Crewmateupdated!');
+                    ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Crewmate updated!',
+                          valueOrDefault<String>(
+                            FFLocalizations.of(context).getVariableText(
+                              enText: 'Crewmate updated!',
+                              frText: 'Crewmate mis à jour !',
+                            ),
+                            'Crewmate updated!',
+                          ),
                           style: GoogleFonts.getFont(
                             'Noto Sans',
                             color: FlutterFlowTheme.of(context).primary,
-                            fontWeight: FontWeight.normal,
+                            fontWeight: FontWeight.w500,
                             fontSize: 16.0,
                           ),
                         ),
@@ -227,16 +250,25 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                     );
                   } else {
                     // Create crewmate
+                    logFirebaseEvent('Button_Createcrewmate');
 
                     await CrewmatesRecord.createDoc(widget.crewRef!)
                         .set(createCrewmatesRecordData(
                       name: _model.nameInputController.text,
                     ));
                     // Crewmate created!
+                    logFirebaseEvent('Button_Crewmatecreated!');
+                    ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Crewmate created!',
+                          valueOrDefault<String>(
+                            FFLocalizations.of(context).getVariableText(
+                              enText: 'Crewmate created!',
+                              frText: 'Crewmate créé !',
+                            ),
+                            'Crewmate created!',
+                          ),
                           style: GoogleFonts.getFont(
                             'Noto Sans',
                             color: FlutterFlowTheme.of(context).primary,
@@ -249,6 +281,7 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                     );
                   }
 
+                  logFirebaseEvent('Button_close_dialog,_drawer,_etc');
                   Navigator.pop(context);
                 }
 
@@ -264,7 +297,7 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
               options: FFButtonOptions(
                 width: 280.0,
                 height: 56.0,
-                padding: EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 0.0),
+                padding: EdgeInsets.all(0.0),
                 iconPadding: EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 8.0, 0.0),
                 color: FlutterFlowTheme.of(context).primary,
                 textStyle: FlutterFlowTheme.of(context).titleLarge,
@@ -280,7 +313,7 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
           if (_model.showSnackbar)
             Expanded(
               child: Align(
-                alignment: AlignmentDirectional(0.00, 1.00),
+                alignment: AlignmentDirectional(0.0, 1.0),
                 child: wrapWithModel(
                   model: _model.customSnackbarModel,
                   updateCallback: () => setState(() {}),

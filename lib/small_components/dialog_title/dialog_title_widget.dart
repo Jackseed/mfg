@@ -56,7 +56,7 @@ class _DialogTitleWidgetState extends State<DialogTitleWidget> {
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Align(
-            alignment: AlignmentDirectional(1.00, 0.00),
+            alignment: AlignmentDirectional(1.0, 0.0),
             child: Padding(
               padding: EdgeInsetsDirectional.fromSTEB(8.0, 2.0, 0.0, 0.0),
               child: FlutterFlowIconButton(
@@ -70,13 +70,14 @@ class _DialogTitleWidgetState extends State<DialogTitleWidget> {
                 ),
                 onPressed: () async {
                   logFirebaseEvent('DIALOG_TITLE_COMP_close_ICN_ON_TAP');
+                  logFirebaseEvent('IconButton_close_dialog,_drawer,_etc');
                   Navigator.pop(context);
                 },
               ),
             ),
           ),
           Align(
-            alignment: AlignmentDirectional(0.00, 0.00),
+            alignment: AlignmentDirectional(0.0, 0.0),
             child: Padding(
               padding: EdgeInsetsDirectional.fromSTEB(12.0, 0.0, 0.0, 0.0),
               child: Text(

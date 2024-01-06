@@ -6,7 +6,6 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/form_field_controller.dart';
 import '/page_component/deck_form/deck_form_widget.dart';
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -118,10 +117,12 @@ class _DeckSelectWidgetState extends State<DeckSelectWidget> {
                       if ((int deckNumber) {
                         return deckNumber == 1 ? true : false;
                       }(widget.deckNumber!)) {
+                        logFirebaseEvent('Deck_select_update_app_state');
                         setState(() {
                           FFAppState().deck1Selected = false;
                         });
                       } else {
+                        logFirebaseEvent('Deck_select_update_app_state');
                         setState(() {
                           FFAppState().deck2Selected = false;
                         });
@@ -165,10 +166,12 @@ class _DeckSelectWidgetState extends State<DeckSelectWidget> {
                       if ((int deckNumber) {
                         return deckNumber == 1 ? true : false;
                       }(widget.deckNumber!)) {
+                        logFirebaseEvent('Deck_select_update_app_state');
                         setState(() {
                           FFAppState().deck1Selected = true;
                         });
                       } else {
+                        logFirebaseEvent('Deck_select_update_app_state');
                         setState(() {
                           FFAppState().deck2Selected = true;
                         });
@@ -247,17 +250,15 @@ class _DeckSelectWidgetState extends State<DeckSelectWidget> {
                       ),
                       onPressed: () async {
                         logFirebaseEvent('DECK_SELECT_COMP_add_ICN_ON_TAP');
-                        await showAlignedDialog(
+                        logFirebaseEvent('IconButton_alert_dialog');
+                        await showDialog(
                           context: context,
-                          isGlobal: true,
-                          avoidOverflow: false,
-                          targetAnchor: AlignmentDirectional(0.0, 0.0)
-                              .resolve(Directionality.of(context)),
-                          followerAnchor: AlignmentDirectional(0.0, 0.0)
-                              .resolve(Directionality.of(context)),
                           builder: (dialogContext) {
-                            return Material(
-                              color: Colors.transparent,
+                            return Dialog(
+                              insetPadding: EdgeInsets.zero,
+                              backgroundColor: Colors.transparent,
+                              alignment: AlignmentDirectional(0.0, 0.0)
+                                  .resolve(Directionality.of(context)),
                               child: DeckFormWidget(),
                             );
                           },

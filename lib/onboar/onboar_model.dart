@@ -1,30 +1,31 @@
-import '/auth/firebase_auth/auth_util.dart';
+import '/flutter_flow/flutter_flow_animations.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
-import '/flutter_flow/flutter_flow_video_player.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
-import '/actions/actions.dart' as action_blocks;
-import 'entry_page_widget.dart' show EntryPageWidget;
+import 'dart:ui';
+import 'onboar_widget.dart' show OnboarWidget;
 import 'package:smooth_page_indicator/smooth_page_indicator.dart'
     as smooth_page_indicator;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-class EntryPageModel extends FlutterFlowModel<EntryPageWidget> {
+class OnboarModel extends FlutterFlowModel<OnboarWidget> {
   ///  State fields for stateful widgets in this page.
 
   final unfocusNode = FocusNode();
-  // State field(s) for Onboarding widget.
-  PageController? onboardingController;
+  // State field(s) for PageView widget.
+  PageController? pageViewController;
 
-  int get onboardingCurrentIndex => onboardingController != null &&
-          onboardingController!.hasClients &&
-          onboardingController!.page != null
-      ? onboardingController!.page!.round()
+  int get pageViewCurrentIndex => pageViewController != null &&
+          pageViewController!.hasClients &&
+          pageViewController!.page != null
+      ? pageViewController!.page!.round()
       : 0;
 
   /// Initialization and disposal methods.

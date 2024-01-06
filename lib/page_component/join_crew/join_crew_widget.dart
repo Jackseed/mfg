@@ -6,7 +6,6 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
 import '/page_component/select_crewmate/select_crewmate_widget.dart';
 import '/small_components/dialog_title/dialog_title_widget.dart';
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
@@ -41,6 +40,7 @@ class _JoinCrewWidgetState extends State<JoinCrewWidget> {
 
     _model.codeInputController ??= TextEditingController();
     _model.codeInputFocusNode ??= FocusNode();
+
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
@@ -79,7 +79,7 @@ class _JoinCrewWidgetState extends State<JoinCrewWidget> {
             ),
           ),
           Align(
-            alignment: AlignmentDirectional(-1.00, 0.00),
+            alignment: AlignmentDirectional(-1.0, 0.0),
             child: Padding(
               padding: EdgeInsetsDirectional.fromSTEB(20.0, 20.0, 20.0, 0.0),
               child: RichText(
@@ -118,7 +118,7 @@ class _JoinCrewWidgetState extends State<JoinCrewWidget> {
             ),
           ),
           Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(20.0, 20.0, 20.0, 20.0),
+            padding: EdgeInsets.all(20.0),
             child: TextFormField(
               controller: _model.codeInputController,
               focusNode: _model.codeInputFocusNode,
@@ -189,6 +189,7 @@ class _JoinCrewWidgetState extends State<JoinCrewWidget> {
               child: FFButtonWidget(
                 onPressed: () async {
                   logFirebaseEvent('JOIN_CREW_COMP_JOIN_BTN_ON_TAP');
+                  logFirebaseEvent('Button_firestore_query');
                   _model.crewList = await queryCrewsRecordOnce();
                   if (_model.crewList!
                       .map((e) => valueOrDefault<String>(
@@ -197,17 +198,15 @@ class _JoinCrewWidgetState extends State<JoinCrewWidget> {
                           ))
                       .toList()
                       .contains(_model.codeInputController.text)) {
-                    await showAlignedDialog(
+                    logFirebaseEvent('Button_alert_dialog');
+                    await showDialog(
                       context: context,
-                      isGlobal: true,
-                      avoidOverflow: false,
-                      targetAnchor: AlignmentDirectional(0.0, 0.0)
-                          .resolve(Directionality.of(context)),
-                      followerAnchor: AlignmentDirectional(0.0, 0.0)
-                          .resolve(Directionality.of(context)),
                       builder: (dialogContext) {
-                        return Material(
-                          color: Colors.transparent,
+                        return Dialog(
+                          insetPadding: EdgeInsets.zero,
+                          backgroundColor: Colors.transparent,
+                          alignment: AlignmentDirectional(0.0, 0.0)
+                              .resolve(Directionality.of(context)),
                           child: SelectCrewmateWidget(
                             crewId: _model.codeInputController.text,
                           ),
@@ -215,11 +214,20 @@ class _JoinCrewWidgetState extends State<JoinCrewWidget> {
                       },
                     ).then((value) => setState(() {}));
                   } else {
+                    logFirebaseEvent('Button_update_component_state');
                     setState(() {
                       _model.showSnackbar = true;
-                      _model.snackbarMessage = 'This is not a correct code';
+                      _model.snackbarMessage = valueOrDefault<String>(
+                        FFLocalizations.of(context).getVariableText(
+                          enText: 'Incorrect code',
+                          frText: 'Code incorrect ',
+                        ),
+                        'Incorrect code',
+                      );
                     });
+                    logFirebaseEvent('Button_wait__delay');
                     await Future.delayed(const Duration(milliseconds: 4000));
+                    logFirebaseEvent('Button_update_component_state');
                     setState(() {
                       _model.showSnackbar = false;
                     });
@@ -237,7 +245,7 @@ class _JoinCrewWidgetState extends State<JoinCrewWidget> {
                 options: FFButtonOptions(
                   width: 280.0,
                   height: 56.0,
-                  padding: EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 0.0),
+                  padding: EdgeInsets.all(0.0),
                   iconPadding:
                       EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 4.0, 0.0),
                   color: FlutterFlowTheme.of(context).primary,
@@ -259,7 +267,7 @@ class _JoinCrewWidgetState extends State<JoinCrewWidget> {
           if (_model.showSnackbar)
             Flexible(
               child: Align(
-                alignment: AlignmentDirectional(0.00, 1.00),
+                alignment: AlignmentDirectional(0.0, 1.0),
                 child: wrapWithModel(
                   model: _model.customSnackbarModel,
                   updateCallback: () => setState(() {}),

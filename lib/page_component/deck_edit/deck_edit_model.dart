@@ -51,7 +51,6 @@ class DeckEditModel extends FlutterFlowModel<DeckEditWidget> {
 
   ///  State fields for stateful widgets in this component.
 
-  final formKey = GlobalKey<FormState>();
   // Stores action output result for [Firestore Query - Query a collection] action in DeckEdit widget.
   List<ImagesRecord>? avatars;
   // Model for DialogTitle component.

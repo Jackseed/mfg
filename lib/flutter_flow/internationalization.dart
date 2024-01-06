@@ -127,8 +127,8 @@ final kTranslationsMap = <Map<String, Map<String, String>>>[
       'fr': 'Il vous faut un Crew pour classer des parties',
     },
     'bfqx9xex': {
-      'en': 'log out v0.6',
-      'fr': 'déconnexion 0.6',
+      'en': 'log out v0.11',
+      'fr': 'déconnexion 0.11',
     },
     'pyibog7d': {
       'en': 'Play',
@@ -471,7 +471,7 @@ final kTranslationsMap = <Map<String, Map<String, String>>>[
       'fr': '',
     },
   },
-  // EntryPage
+  // EntryPageOld
   {
     'uou39pwv': {
       'en': 'Welcome to Magic Friends Gatherings',
@@ -500,9 +500,9 @@ final kTranslationsMap = <Map<String, Map<String, String>>>[
     },
     'p8z88xid': {
       'en':
-          'MFG is an app created out of a love for both Magic and coding. It appears that this one is in fact made with no-coding tool (using FlutterFlow); it would have been open source otherwise. ',
+          'MFG is an app inspired by a deep appreciation for both Magic and coding. I crafted it with FlutterFlow to experiment with no-code platforms, and it\'s available as open source on GitHub under the MFG repository.',
       'fr':
-          'MFG est une app créée par amour pour Magic et le code. Celle-ci a en fait été réalisée en no-code (FlutterFlow), sinon elle aurait été open-source.',
+          'MFG est une app créée par amour pour Magic et le code. Celle-ci a en fait été réalisée en no-code pour essayer FlutterFlow et elle est disponible en open-source sur Github, repo MFG.',
     },
     '6z8msqpl': {
       'en':
@@ -573,6 +573,109 @@ final kTranslationsMap = <Map<String, Map<String, String>>>[
     '2qtkt4s9': {
       'en': 'Home',
       'fr': 'Accueil',
+    },
+  },
+  // EntryPage
+  {
+    'hsqkht8t': {
+      'en': 'Welcome to MFG',
+      'fr': 'Bienvenue sur MFG',
+    },
+    '5dx1vr6r': {
+      'en':
+          'MFG counts life during duels and enables you to keep track of the games with your friends. Eventually know what\'s the best deck!',
+      'fr':
+          'MFG vous permet de compter les pv lors d\'un duel et d\'enregistrer les résultats de vos parties. Vous pourrez enfin dire quel est le meilleur deck !',
+    },
+    '1iqc9mhf': {
+      'en': 'Track life',
+      'fr': 'Tenez les comptes',
+    },
+    '1310saxp': {
+      'en':
+          'Easily launch new matches and keep track of life points. Do it with beautiful custom avatar to represent your deck.',
+      'fr':
+          'Lancez des duels et tenez le compte des PV, le tout avec des avatars sur-mesure !',
+    },
+    'vmthk5km': {
+      'en': 'Create decks',
+      'fr': 'Créez des decks',
+    },
+    'swnteph7': {
+      'en':
+          'To get the full potential of MFG start your  crew and create your decks. It only takes a name and an avatar and you\'re done!',
+      'fr':
+          'Pour accéder à toutes les fonctionnalités de MFG, lancez votre crew et créez vos decks. Un nom et un avatar suffisent, pas de deck list !',
+    },
+    'zcadctex': {
+      'en': 'Save results',
+      'fr': 'Enregistrez vos résultats',
+    },
+    'xn4spjbq': {
+      'en':
+          'Once your decks created you\'ll be able to automatically save your results while tracking life or simply save previous results to keep scores. ',
+      'fr':
+          'Une fois vos decks créés, vous pourrez sauvegarder vos résultats automatiquement lors de vos duels. Ou ajouter des parties faites en-dehors.',
+    },
+    'cixbjqbm': {
+      'en': 'invite friends',
+      'fr': 'Invitez vos amis',
+    },
+    'dw7ggp2c': {
+      'en':
+          'You can create decks in the name of your friends, or invite them and let them do it!',
+      'fr':
+          'Vous pouvez créer les decks de vos amis à leur place, ou tout simplement les invitez et les laissez faire !',
+    },
+    'dr52xotf': {
+      'en': 'Get started',
+      'fr': 'C\'est parti !',
+    },
+  },
+  // onboar
+  {
+    'ab4xcvpv': {
+      'en': 'Spring Specials 2022',
+      'fr': '',
+    },
+    'kilk18g4': {
+      'en':
+          'Pay attention to our new athlesiure line, it is located in our main section and we have sales!',
+      'fr': '',
+    },
+    '70695dqp': {
+      'en': 'Puuuurfect Running Gear',
+      'fr': '',
+    },
+    'lxlc4z0d': {
+      'en':
+          'Pay attention to our new athlesiure line, it is located in our main section and we have sales!',
+      'fr': '',
+    },
+    'gsa0ktyc': {
+      'en': 'The right pair of shoes',
+      'fr': '',
+    },
+    'dmk8g7fr': {
+      'en':
+          'The pursuit of speed continues with the Nike Quest 4 Premium. Take on the streets with higher foam heights and cushioned comfort that combine with a lightweight upper to offer secure support.',
+      'fr': '',
+    },
+    'r0l1q5z8': {
+      'en': 'Your Journey Begins',
+      'fr': '',
+    },
+    '77ye38o8': {
+      'en': 'Sign up below in order to get started!',
+      'fr': '',
+    },
+    'b6r0ihrh': {
+      'en': 'Get Started',
+      'fr': '',
+    },
+    'vifdi8nz': {
+      'en': 'Home',
+      'fr': '',
     },
   },
   // DeckForm
@@ -855,32 +958,12 @@ final kTranslationsMap = <Map<String, Map<String, String>>>[
       'en': 'Save',
       'fr': 'Sauvegarder',
     },
-    '39l2i3vb': {
-      'en': 'A name is required',
-      'fr': 'Un nom est requis',
-    },
-    'xyoipvrd': {
-      'en': 'Please choose an option from the dropdown',
-      'fr': 'Choisissez une option dans cette liste',
-    },
-    'z2nxisek': {
-      'en': 'Field is required',
-      'fr': 'Ce champs est requis',
-    },
-    'lhjynft1': {
-      'en': 'Please choose an option from the dropdown',
-      'fr': 'Choisissez une option dans cette liste',
-    },
   },
   // DeckView
   {
     'x8wz0s6u': {
       'en': 'Edit a deck',
       'fr': 'Modifier le deck',
-    },
-    'u0i2ln3j': {
-      'en': ' - ',
-      'fr': ' - ',
     },
   },
   // JoinCrew
@@ -953,10 +1036,6 @@ final kTranslationsMap = <Map<String, Map<String, String>>>[
           'Create your crewmates with the ➕ button above and they will be listed here.',
       'fr':
           'Créez vos crewmates avec le bouton ➕ au-dessus et ils seront listés ici.',
-    },
-    'plab1m34': {
-      'en': 'Browse Menu',
-      'fr': '',
     },
   },
   // Miscellaneous

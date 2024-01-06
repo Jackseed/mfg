@@ -41,8 +41,10 @@ class _CrewFormWidgetState extends State<CrewFormWidget> {
 
     _model.crewNameFieldController ??= TextEditingController();
     _model.crewNameFieldFocusNode ??= FocusNode();
+
     _model.userNameFieldController ??= TextEditingController();
     _model.userNameFieldFocusNode ??= FocusNode();
+
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
@@ -83,7 +85,7 @@ class _CrewFormWidgetState extends State<CrewFormWidget> {
             child: Container(
               width: MediaQuery.sizeOf(context).width * 1.0,
               decoration: BoxDecoration(),
-              alignment: AlignmentDirectional(0.00, 0.00),
+              alignment: AlignmentDirectional(0.0, 0.0),
               child: Form(
                 key: _model.formKey,
                 autovalidateMode: AutovalidateMode.disabled,
@@ -228,11 +230,13 @@ class _CrewFormWidgetState extends State<CrewFormWidget> {
                         onPressed: () async {
                           logFirebaseEvent(
                               'CREW_FORM_COMP_LET\'S_GO!_BTN_ON_TAP');
+                          logFirebaseEvent('Button_validate_form');
                           if (_model.formKey.currentState == null ||
                               !_model.formKey.currentState!.validate()) {
                             return;
                           }
                           // Create Crew
+                          logFirebaseEvent('Button_CreateCrew');
 
                           var crewsRecordReference =
                               CrewsRecord.collection.doc();
@@ -245,6 +249,7 @@ class _CrewFormWidgetState extends State<CrewFormWidget> {
                               ),
                               crewsRecordReference);
                           // Create Crewmate
+                          logFirebaseEvent('Button_CreateCrewmate');
 
                           var crewmatesRecordReference =
                               CrewmatesRecord.createDoc(
@@ -262,6 +267,7 @@ class _CrewFormWidgetState extends State<CrewFormWidget> {
                                   ),
                                   crewmatesRecordReference);
                           // Update User
+                          logFirebaseEvent('Button_UpdateUser');
 
                           await currentUserReference!
                               .update(createUsersRecordData(
@@ -270,15 +276,25 @@ class _CrewFormWidgetState extends State<CrewFormWidget> {
                             crewmateRef: _model.crewmateDoc?.reference,
                           ));
                           // Back to home
+                          logFirebaseEvent('Button_Backtohome');
                           context.safePop();
                           // Crew created!
+                          logFirebaseEvent('Button_Crewcreated!');
+                          ScaffoldMessenger.of(context).clearSnackBars();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'Crew created!',
+                                valueOrDefault<String>(
+                                  FFLocalizations.of(context).getVariableText(
+                                    enText: 'Crew created!',
+                                    frText: 'Crew créé !',
+                                  ),
+                                  'Crew created!',
+                                ),
                                 style: GoogleFonts.getFont(
                                   'Noto Sans',
                                   color: FlutterFlowTheme.of(context).primary,
+                                  fontWeight: FontWeight.w500,
                                   fontSize: 16.0,
                                 ),
                               ),

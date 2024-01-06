@@ -171,15 +171,25 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           ),
         ),
         FFRoute(
-          name: 'EntryPage',
-          path: '/entryPage',
-          builder: (context, params) => EntryPageWidget(),
+          name: 'EntryPageOld',
+          path: '/entryPageOld',
+          builder: (context, params) => EntryPageOldWidget(),
         ),
         FFRoute(
           name: 'D_About',
           path: '/dAbout',
           requireAuth: true,
           builder: (context, params) => DAboutWidget(),
+        ),
+        FFRoute(
+          name: 'EntryPage',
+          path: '/entryPageCopy',
+          builder: (context, params) => EntryPageWidget(),
+        ),
+        FFRoute(
+          name: 'onboar',
+          path: '/onboar',
+          builder: (context, params) => OnboarWidget(),
         )
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
       observers: [routeObserver],
@@ -347,7 +357,7 @@ class FFRoute {
 
           if (requireAuth && !appStateNotifier.loggedIn) {
             appStateNotifier.setRedirectLocationIfUnset(state.location);
-            return '/entryPage';
+            return '/entryPageCopy';
           }
           return null;
         },
@@ -362,9 +372,13 @@ class FFRoute {
           final child = appStateNotifier.loading
               ? Container(
                   color: Colors.transparent,
-                  child: Image.asset(
-                    'assets/images/Ponder_DanScott_AdobeExpress.gif',
-                    fit: BoxFit.fill,
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/MFG_splash.png',
+                      width: MediaQuery.sizeOf(context).width * 0.5,
+                      height: MediaQuery.sizeOf(context).height * 0.8,
+                      fit: BoxFit.fitWidth,
+                    ),
                   ),
                 )
               : page;
@@ -375,13 +389,20 @@ class FFRoute {
                   key: state.pageKey,
                   child: child,
                   transitionDuration: transitionInfo.duration,
-                  transitionsBuilder: PageTransition(
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) =>
+                          PageTransition(
                     type: transitionInfo.transitionType,
                     duration: transitionInfo.duration,
                     reverseDuration: transitionInfo.duration,
                     alignment: transitionInfo.alignment,
                     child: child,
-                  ).transitionsBuilder,
+                  ).buildTransitions(
+                    context,
+                    animation,
+                    secondaryAnimation,
+                    child,
+                  ),
                 )
               : MaterialPage(key: state.pageKey, child: child);
         },

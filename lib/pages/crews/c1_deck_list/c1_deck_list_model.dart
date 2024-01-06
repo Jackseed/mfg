@@ -9,7 +9,6 @@ import '/small_components/deck_view/deck_view_widget.dart';
 import '/flutter_flow/request_manager.dart';
 
 import 'c1_deck_list_widget.dart' show C1DeckListWidget;
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';

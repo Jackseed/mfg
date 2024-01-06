@@ -6,7 +6,6 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
 import '/page_component/deck_form/deck_form_widget.dart';
 import '/small_components/deck_view/deck_view_widget.dart';
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -98,17 +97,15 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
                   onPressed: () async {
                     logFirebaseEvent(
                         'C1_DECK_LIST_FloatingActionButton_5531ea');
-                    await showAlignedDialog(
+                    logFirebaseEvent('FloatingActionButton_alert_dialog');
+                    await showDialog(
                       context: context,
-                      isGlobal: true,
-                      avoidOverflow: false,
-                      targetAnchor: AlignmentDirectional(0.0, 0.0)
-                          .resolve(Directionality.of(context)),
-                      followerAnchor: AlignmentDirectional(0.0, 0.0)
-                          .resolve(Directionality.of(context)),
                       builder: (dialogContext) {
-                        return Material(
-                          color: Colors.transparent,
+                        return Dialog(
+                          insetPadding: EdgeInsets.zero,
+                          backgroundColor: Colors.transparent,
+                          alignment: AlignmentDirectional(0.0, 0.0)
+                              .resolve(Directionality.of(context)),
                           child: GestureDetector(
                             onTap: () => _model.unfocusNode.canRequestFocus
                                 ? FocusScope.of(context)
@@ -152,6 +149,7 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
                   onPressed: () async {
                     logFirebaseEvent(
                         'C1_DECK_LIST_arrow_back_rounded_ICN_ON_T');
+                    logFirebaseEvent('IconButton_navigate_back');
                     context.pop();
                   },
                 ),
@@ -195,7 +193,6 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
                               }
                               return ListView.builder(
                                 padding: EdgeInsets.zero,
-                                shrinkWrap: true,
                                 scrollDirection: Axis.vertical,
                                 itemCount: deckList.length,
                                 itemBuilder: (context, deckListIndex) {
@@ -212,7 +209,7 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
                         ),
                       if (c1DeckListDecksRecordList.length == 0)
                         Align(
-                          alignment: AlignmentDirectional(0.00, 0.00),
+                          alignment: AlignmentDirectional(0.0, 0.0),
                           child: Padding(
                             padding: EdgeInsetsDirectional.fromSTEB(
                                 28.0, 0.0, 28.0, 40.0),
@@ -246,7 +243,7 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
                                   ),
                                 ),
                                 Align(
-                                  alignment: AlignmentDirectional(0.00, 0.00),
+                                  alignment: AlignmentDirectional(0.0, 0.0),
                                   child: Padding(
                                     padding: EdgeInsetsDirectional.fromSTEB(
                                         0.0, 4.0, 0.0, 0.0),

@@ -7,7 +7,6 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/form_field_controller.dart';
 import '/page_component/deck_form/deck_form_widget.dart';
 import 'deck_select_widget.dart' show DeckSelectWidget;
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

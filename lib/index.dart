@@ -15,5 +15,7 @@ export '/pages/crews/b4_matchup_view/b4_matchup_view_widget.dart'
     show B4MatchupViewWidget;
 export '/pages/crews/c2_game_list/c2_game_list_widget.dart'
     show C2GameListWidget;
-export '/entry_page/entry_page_widget.dart' show EntryPageWidget;
+export '/entry_page_old/entry_page_old_widget.dart' show EntryPageOldWidget;
 export '/pages/duels/d_about/d_about_widget.dart' show DAboutWidget;
+export '/entry_page/entry_page_widget.dart' show EntryPageWidget;
+export '/onboar/onboar_widget.dart' show OnboarWidget;

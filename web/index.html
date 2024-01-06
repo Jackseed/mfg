@@ -26,16 +26,16 @@
   
 
   <!-- Favicon -->
-  <link rel="icon" href="mfg_yellow.ico" sizes="any"/>
+  <link rel="icon" href="favicon.ico" sizes="any"/>
   
 
   <!-- Open Graph & SEO tags -->
   <meta property="og:title" content="Magic Friends Gatherings" />
   <meta property="og:description" content="Magic Friends Gatherings count life during duels and enables you to keep track of the games with your friends. Eventually know what's the best deck!" />
-  <meta property="og:image" content="/assets/assets/images/mfg_yellow.png" /> 
+  <meta property="og:image" content="/assets/assets/images/MFG_logo_blanc.png" /> 
   <meta name="twitter:title" content="Magic Friends Gatherings" />
   <meta name="twitter:description" content="Magic Friends Gatherings count life during duels and enables you to keep track of the games with your friends. Eventually know what's the best deck!" />
-  <meta name="twitter:image" content="/assets/assets/images/mfg_yellow.png" />
+  <meta name="twitter:image" content="/assets/assets/images/MFG_logo_blanc.png" />
   <meta name="twitter:card" content="summary_large_image" />
 
   <title> Magic Friends Gatherings </title>
@@ -43,8 +43,8 @@
     
 
   <!-- Status Bar color in Safari browser (iOS) and PWA -->
-  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffc857">
-  <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#ee8b60">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#323236">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#323236">
 
   <link rel="manifest" href="manifest.json">
   <script>
@@ -55,8 +55,12 @@
   <script src="flutter.js" defer></script>
 </head>
 <body>
+  
+  
+  
+  
+  
   <script>
-    
     window.addEventListener('load', function (ev) {
       // Download main.dart.js
       _flutter.loader.loadEntrypoint({
@@ -67,16 +71,12 @@
         },
         onEntrypointLoaded: async function(engineInitializer) {
           // Initialize the Flutter engine
-          let appRunner = await engineInitializer.initializeEngine();
+          let appRunner = await engineInitializer.initializeEngine({});
           // Run the app
           await appRunner.runApp();
         }
       });
     });
   </script>
-  
-  
-  
-  
 </body>
 </html>

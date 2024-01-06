@@ -74,7 +74,7 @@ class _CustomSnackbarWidgetState extends State<CustomSnackbarWidget>
       decoration: BoxDecoration(
         color: FlutterFlowTheme.of(context).tertiary,
       ),
-      alignment: AlignmentDirectional(-1.00, 0.00),
+      alignment: AlignmentDirectional(-1.0, 0.0),
       child: Padding(
         padding: EdgeInsetsDirectional.fromSTEB(4.0, 0.0, 0.0, 0.0),
         child: Text(

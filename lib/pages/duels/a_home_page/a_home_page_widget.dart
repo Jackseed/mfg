@@ -32,6 +32,7 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
     // On page load action.
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       logFirebaseEvent('A_HOME_A_HomePage_ON_INIT_STATE');
+      logFirebaseEvent('A_HomePage_update_app_state');
       setState(() {
         FFAppState().currentGameDeckRef1 =
             FirebaseFirestore.instance.doc('/decks/0YMtzxv9Gae9WsgfPcjG');
@@ -73,6 +74,7 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
         floatingActionButton: FloatingActionButton(
           onPressed: () async {
             logFirebaseEvent('A_HOME_FloatingActionButton_9dlv0anm_ON_');
+            logFirebaseEvent('FloatingActionButton_navigate_to');
 
             context.pushNamed('D_About');
           },
@@ -104,7 +106,7 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
               children: [
                 Flexible(
                   child: Align(
-                    alignment: AlignmentDirectional(0.00, 0.00),
+                    alignment: AlignmentDirectional(0.0, 0.0),
                     child: Padding(
                       padding:
                           EdgeInsetsDirectional.fromSTEB(0.0, 40.0, 0.0, 0.0),
@@ -117,8 +119,12 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
                           logFirebaseEvent(
                               'A_HOME_PAGE_PAGE_StartButton_ON_TAP');
                           if (_model.switchValue!) {
+                            logFirebaseEvent('StartButton_navigate_to');
+
                             context.pushNamed('B_GameForm');
                           } else {
+                            logFirebaseEvent('StartButton_navigate_to');
+
                             context.pushNamed(
                               'C_GameView',
                               queryParameters: {
@@ -153,7 +159,7 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
                               color: Colors.transparent,
                               elevation: 4.0,
                               child: Align(
-                                alignment: AlignmentDirectional(0.00, 0.00),
+                                alignment: AlignmentDirectional(0.0, 0.0),
                                 child: Text(
                                   FFLocalizations.of(context).getText(
                                     'zd3bzna3' /* New match */,
@@ -175,7 +181,7 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
                   ),
                 ),
                 Align(
-                  alignment: AlignmentDirectional(0.00, 2.00),
+                  alignment: AlignmentDirectional(0.0, 2.0),
                   child: Padding(
                     padding:
                         EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 40.0),
@@ -183,7 +189,7 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
                       alignment: AlignmentDirectional(0.0, 0.0),
                       children: [
                         Align(
-                          alignment: AlignmentDirectional(0.00, 0.00),
+                          alignment: AlignmentDirectional(0.0, 0.0),
                           child: Row(
                             mainAxisSize: MainAxisSize.max,
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -236,7 +242,7 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
                                 color: Color(0x617F5656),
                               ),
                               child: Align(
-                                alignment: AlignmentDirectional(0.00, 1.00),
+                                alignment: AlignmentDirectional(0.0, 1.0),
                                 child: Padding(
                                   padding: EdgeInsetsDirectional.fromSTEB(
                                       0.0, 0.0, 0.0, 4.0),
@@ -259,11 +265,11 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
                     ),
                   ),
                 ),
-                if (true)
+                if (!true)
                   FFButtonWidget(
                     onPressed: () async {
-                      logFirebaseEvent(
-                          'A_HOME_PAGE_PAGE_LOG_OUT_V0_6_BTN_ON_TAP');
+                      logFirebaseEvent('A_HOME_LOG_OUT_V0_11_BTN_ON_TAP');
+                      logFirebaseEvent('Button_auth');
                       GoRouter.of(context).prepareAuthEvent();
                       await authManager.signOut();
                       GoRouter.of(context).clearRedirectLocation();
@@ -271,7 +277,7 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
                       context.goNamedAuth('EntryPage', context.mounted);
                     },
                     text: FFLocalizations.of(context).getText(
-                      'bfqx9xex' /* log out v0.6 */,
+                      'bfqx9xex' /* log out v0.11 */,
                     ),
                     options: FFButtonOptions(
                       height: 40.0,

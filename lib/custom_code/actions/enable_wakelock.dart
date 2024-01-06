@@ -10,9 +10,11 @@ import 'package:flutter/material.dart';
 // Begin custom action code
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
-import 'package:wakelock/wakelock.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 Future<void> enableWakelock() async {
   // Add your function code here!
-  Wakelock.enable();
+  bool enable = true;
+// The following statement enables the wakelock.
+  WakelockPlus.toggle(enable: enable);
 }

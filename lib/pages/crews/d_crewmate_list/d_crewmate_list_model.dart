@@ -7,7 +7,6 @@ import '/flutter_flow/flutter_flow_widgets.dart';
 import '/page_component/crewmate_form/crewmate_form_widget.dart';
 import '/page_component/crewmate_list/crewmate_list_widget.dart';
 import 'd_crewmate_list_widget.dart' show DCrewmateListWidget;
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';

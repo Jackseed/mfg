@@ -45,7 +45,7 @@ class ScoreStruct extends FFFirebaseStruct {
       );
 
   static ScoreStruct? maybeFromMap(dynamic data) =>
-      data is Map<String, dynamic> ? ScoreStruct.fromMap(data) : null;
+      data is Map ? ScoreStruct.fromMap(data.cast<String, dynamic>()) : null;
 
   Map<String, dynamic> toMap() => {
         'deckId': _deckId,

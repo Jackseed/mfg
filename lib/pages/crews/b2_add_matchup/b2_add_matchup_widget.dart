@@ -155,7 +155,7 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             Align(
-                              alignment: AlignmentDirectional(1.00, 0.00),
+                              alignment: AlignmentDirectional(1.0, 0.0),
                               child: Padding(
                                 padding: EdgeInsetsDirectional.fromSTEB(
                                     0.0, 8.0, 20.0, 0.0),
@@ -172,6 +172,8 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'B2_ADD_MATCHUP_PAGE_DateButton_ON_TAP');
+                                    logFirebaseEvent(
+                                        'DateButton_date_time_picker');
                                     final _datePickedDate =
                                         await showDatePicker(
                                       context: context,
@@ -237,7 +239,7 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                                 ],
                                 borderRadius: BorderRadius.circular(30.0),
                               ),
-                              alignment: AlignmentDirectional(1.00, 0.00),
+                              alignment: AlignmentDirectional(1.0, 0.0),
                               child: Row(
                                 mainAxisSize: MainAxisSize.max,
                                 mainAxisAlignment: MainAxisAlignment.end,
@@ -245,7 +247,7 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                                   Expanded(
                                     child: Align(
                                       alignment:
-                                          AlignmentDirectional(-1.00, 0.00),
+                                          AlignmentDirectional(-1.0, 0.0),
                                       child: Padding(
                                         padding: EdgeInsetsDirectional.fromSTEB(
                                             20.0, 0.0, 0.0, 0.0),
@@ -324,7 +326,7 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                             color: Color(0x34FFFFFF),
                             shape: BoxShape.circle,
                           ),
-                          alignment: AlignmentDirectional(0.00, 0.00),
+                          alignment: AlignmentDirectional(0.0, 0.0),
                           child: Padding(
                             padding: EdgeInsetsDirectional.fromSTEB(
                                 0.0, 8.0, 0.0, 0.0),
@@ -387,7 +389,7 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                                 ],
                                 borderRadius: BorderRadius.circular(30.0),
                               ),
-                              alignment: AlignmentDirectional(1.00, 0.00),
+                              alignment: AlignmentDirectional(1.0, 0.0),
                               child: Row(
                                 mainAxisSize: MainAxisSize.max,
                                 mainAxisAlignment: MainAxisAlignment.end,
@@ -395,7 +397,7 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                                   Expanded(
                                     child: Align(
                                       alignment:
-                                          AlignmentDirectional(-1.00, 0.00),
+                                          AlignmentDirectional(-1.0, 0.0),
                                       child: Padding(
                                         padding: EdgeInsetsDirectional.fromSTEB(
                                             20.0, 0.0, 0.0, 0.0),
@@ -477,303 +479,164 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                                 : () async {
                                     logFirebaseEvent(
                                         'B2_ADD_MATCHUP_PAGE_SaveButton_ON_TAP');
-                                    // Get deck1
-                                    _model.deck1 = await queryDecksRecordOnce(
-                                      queryBuilder: (decksRecord) => decksRecord
-                                          .where(
-                                            'crewId',
-                                            isEqualTo: valueOrDefault(
-                                                currentUserDocument?.crewId,
-                                                ''),
-                                          )
-                                          .where(
-                                            'name',
-                                            isEqualTo: _model
-                                                .player1Model
-                                                .deckSelectModel
-                                                .deckSelectValue,
-                                          ),
-                                      singleRecord: true,
-                                    ).then((s) => s.firstOrNull);
-                                    // Get deck2
-                                    _model.deck2 = await queryDecksRecordOnce(
-                                      queryBuilder: (decksRecord) => decksRecord
-                                          .where(
-                                            'crewId',
-                                            isEqualTo: valueOrDefault(
-                                                currentUserDocument?.crewId,
-                                                ''),
-                                          )
-                                          .where(
-                                            'name',
-                                            isEqualTo: _model
-                                                .player2Model
-                                                .deckSelectModel
-                                                .deckSelectValue,
-                                          ),
-                                      singleRecord: true,
-                                    ).then((s) => s.firstOrNull);
-                                    // Create a MatchupId
-                                    _model.matchupId =
-                                        await actions.createsMatchupid(
-                                      _model.deck1!.reference.id,
-                                      _model.deck2!.reference.id,
-                                    );
-                                    // Check if new today game
-                                    _model.hasDateGame = await actions
-                                        .checkIfDateMatchupGameExists(
-                                      _model.matchupId!,
-                                      _model.datePicked?.toString() == null
-                                          ? functions.getTodayDate()
-                                          : _model.datePicked!,
-                                    );
-                                    if (_model.hasDateGame!) {
-                                      // Get existing game
-                                      _model.dateGame =
-                                          await queryGamesRecordOnce(
-                                        queryBuilder: (gamesRecord) =>
-                                            gamesRecord
+                                    final firestoreBatch =
+                                        FirebaseFirestore.instance.batch();
+                                    try {
+                                      // Get deck1
+                                      logFirebaseEvent('SaveButton_Getdeck1');
+                                      _model.deck1 = await queryDecksRecordOnce(
+                                        queryBuilder: (decksRecord) =>
+                                            decksRecord
                                                 .where(
-                                                  'matchupId',
-                                                  isEqualTo: _model.matchupId,
+                                                  'crewId',
+                                                  isEqualTo: valueOrDefault(
+                                                      currentUserDocument
+                                                          ?.crewId,
+                                                      ''),
                                                 )
                                                 .where(
-                                                  'date',
-                                                  isGreaterThanOrEqualTo: _model
-                                                              .datePicked
-                                                              ?.toString() ==
-                                                          null
-                                                      ? functions.getTodayDate()
-                                                      : _model.datePicked,
-                                                )
-                                                .where(
-                                                  'date',
-                                                  isLessThan: functions
-                                                      .getDayAfterDate(_model
-                                                                  .datePicked
-                                                                  ?.toString() ==
-                                                              null
-                                                          ? functions
-                                                              .getTodayDate()
-                                                          : _model.datePicked!),
+                                                  'name',
+                                                  isEqualTo: _model
+                                                      .player1Model
+                                                      .deckSelectModel
+                                                      .deckSelectValue,
                                                 ),
                                         singleRecord: true,
                                       ).then((s) => s.firstOrNull);
-                                      // Get game Players
-                                      _model.dateGamePlayers =
-                                          await queryPlayersRecordOnce(
-                                        parent: _model.dateGame?.reference,
-                                      );
-                                      // Update Player1's Score
-
-                                      await _model.dateGamePlayers!
-                                          .where((e) =>
-                                              e.deckName ==
-                                              _model
-                                                  .player1Model
-                                                  .deckSelectModel
-                                                  .deckSelectValue)
-                                          .toList()
-                                          .first
-                                          .reference
-                                          .update({
-                                        ...mapToFirestore(
-                                          {
-                                            'score': FieldValue.increment(
-                                                _model.player1CountScoreValue!),
-                                          },
-                                        ),
-                                      });
-                                      // Update Player2's Score
-
-                                      await _model.dateGamePlayers!
-                                          .where((e) =>
-                                              e.deckName ==
-                                              _model
-                                                  .player2Model
-                                                  .deckSelectModel
-                                                  .deckSelectValue)
-                                          .toList()
-                                          .first
-                                          .reference
-                                          .update({
-                                        ...mapToFirestore(
-                                          {
-                                            'score': FieldValue.increment(
-                                                _model.player2CountScoreValue!),
-                                          },
-                                        ),
-                                      });
-                                      // Get related Matchup
-                                      _model.matchupDocExistingGame =
-                                          await queryMatchupsRecordOnce(
-                                        queryBuilder: (matchupsRecord) =>
-                                            matchupsRecord.where(
-                                          'matchupId',
-                                          isEqualTo: _model.matchupId,
-                                        ),
+                                      // Get deck2
+                                      logFirebaseEvent('SaveButton_Getdeck2');
+                                      _model.deck2 = await queryDecksRecordOnce(
+                                        queryBuilder: (decksRecord) =>
+                                            decksRecord
+                                                .where(
+                                                  'crewId',
+                                                  isEqualTo: valueOrDefault(
+                                                      currentUserDocument
+                                                          ?.crewId,
+                                                      ''),
+                                                )
+                                                .where(
+                                                  'name',
+                                                  isEqualTo: _model
+                                                      .player2Model
+                                                      .deckSelectModel
+                                                      .deckSelectValue,
+                                                ),
                                         singleRecord: true,
                                       ).then((s) => s.firstOrNull);
-                                      // Calculate matchup Score
-                                      _model.updatedMatchupScoreExistingGame =
-                                          await actions.updateScores(
-                                        _model.deck1!.deckId,
-                                        _model.player1CountScoreValue!,
-                                        _model.deck2!.deckId,
-                                        _model.player2CountScoreValue!,
-                                        _model.matchupDocExistingGame!.scores
-                                            .toList(),
+                                      // Create a MatchupId
+                                      logFirebaseEvent(
+                                          'SaveButton_CreateaMatchupId');
+                                      _model.matchupId =
+                                          await actions.createsMatchupid(
+                                        _model.deck1!.reference.id,
+                                        _model.deck2!.reference.id,
                                       );
-                                      // Update Matchup score
-                                      // Update matchup Score
-
-                                      await _model
-                                          .matchupDocExistingGame!.reference
-                                          .update({
-                                        ...mapToFirestore(
-                                          {
-                                            'scores': getScoreListFirestoreData(
-                                              _model
-                                                  .updatedMatchupScoreExistingGame,
-                                            ),
-                                          },
-                                        ),
-                                      });
-                                      // Clear form values
-                                      setState(() {
-                                        FFAppState().deck1Selected = false;
-                                        FFAppState().deck2Selected = false;
-                                      });
-                                      // Game updated!
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Game updated!',
-                                            style: GoogleFonts.getFont(
-                                              'Noto Sans',
-                                              color:
-                                                  FlutterFlowTheme.of(context)
-                                                      .primary,
-                                            ),
-                                          ),
-                                          duration:
-                                              Duration(milliseconds: 4000),
-                                          backgroundColor:
-                                              FlutterFlowTheme.of(context)
-                                                  .tertiary,
-                                        ),
-                                      );
-                                    } else {
-                                      // Create new Game
-
-                                      var gamesRecordReference =
-                                          GamesRecord.collection.doc();
-                                      await gamesRecordReference.set({
-                                        ...createGamesRecordData(
-                                          date: _model.datePicked?.toString() ==
-                                                  null
-                                              ? getCurrentTimestamp
-                                              : _model.datePicked,
-                                          crewId: valueOrDefault(
-                                              currentUserDocument?.crewId, ''),
-                                        ),
-                                        ...mapToFirestore(
-                                          {
-                                            'deckIds': (String deckId1,
-                                                    String deckId2) {
-                                              return [deckId1, deckId2];
-                                            }(_model.deck1!.deckId,
-                                                _model.deck2!.deckId),
-                                          },
-                                        ),
-                                      });
-                                      _model.newGameDoc =
-                                          GamesRecord.getDocumentFromData({
-                                        ...createGamesRecordData(
-                                          date: _model.datePicked?.toString() ==
-                                                  null
-                                              ? getCurrentTimestamp
-                                              : _model.datePicked,
-                                          crewId: valueOrDefault(
-                                              currentUserDocument?.crewId, ''),
-                                        ),
-                                        ...mapToFirestore(
-                                          {
-                                            'deckIds': (String deckId1,
-                                                    String deckId2) {
-                                              return [deckId1, deckId2];
-                                            }(_model.deck1!.deckId,
-                                                _model.deck2!.deckId),
-                                          },
-                                        ),
-                                      }, gamesRecordReference);
-                                      // Create Player1
-
-                                      var playersRecordReference1 =
-                                          PlayersRecord.createDoc(
-                                              _model.newGameDoc!.reference);
-                                      await playersRecordReference1
-                                          .set(createPlayersRecordData(
-                                        score: _model.player1CountScoreValue,
-                                        deckName: _model.player1Model
-                                            .deckSelectModel.deckSelectValue,
-                                        deckId: _model.deck1?.deckId,
-                                        crewmateId: _model.deck1?.crewmateId,
-                                        crewId: _model.deck1?.crewId,
-                                      ));
-                                      _model.player1Doc =
-                                          PlayersRecord.getDocumentFromData(
-                                              createPlayersRecordData(
-                                                score: _model
-                                                    .player1CountScoreValue,
-                                                deckName: _model
-                                                    .player1Model
-                                                    .deckSelectModel
-                                                    .deckSelectValue,
-                                                deckId: _model.deck1?.deckId,
-                                                crewmateId:
-                                                    _model.deck1?.crewmateId,
-                                                crewId: _model.deck1?.crewId,
-                                              ),
-                                              playersRecordReference1);
-                                      // Create Player2
-
-                                      var playersRecordReference2 =
-                                          PlayersRecord.createDoc(
-                                              _model.newGameDoc!.reference);
-                                      await playersRecordReference2
-                                          .set(createPlayersRecordData(
-                                        score: _model.player2CountScoreValue,
-                                        deckName: _model.player2Model
-                                            .deckSelectModel.deckSelectValue,
-                                        deckId: _model.deck2?.deckId,
-                                        crewmateId: _model.deck2?.crewmateId,
-                                        crewId: _model.deck2?.crewId,
-                                      ));
-                                      _model.player2Doc =
-                                          PlayersRecord.getDocumentFromData(
-                                              createPlayersRecordData(
-                                                score: _model
-                                                    .player2CountScoreValue,
-                                                deckName: _model
-                                                    .player2Model
-                                                    .deckSelectModel
-                                                    .deckSelectValue,
-                                                deckId: _model.deck2?.deckId,
-                                                crewmateId:
-                                                    _model.deck2?.crewmateId,
-                                                crewId: _model.deck2?.crewId,
-                                              ),
-                                              playersRecordReference2);
-                                      // Check if Matchup exists
-                                      _model.hasMatchup =
-                                          await actions.checkIfMatchupExists(
+                                      // Check if new today game
+                                      logFirebaseEvent(
+                                          'SaveButton_Checkifnewtodaygame');
+                                      _model.hasDateGame = await actions
+                                          .checkIfDateMatchupGameExists(
                                         _model.matchupId!,
+                                        _model.datePicked?.toString() == null
+                                            ? functions.getTodayDate()
+                                            : _model.datePicked!,
                                       );
-                                      if (_model.hasMatchup!) {
-                                        // Get existing Matchup
-                                        _model.matchupDocNewGame =
+                                      if (_model.hasDateGame!) {
+                                        // Get existing game
+                                        logFirebaseEvent(
+                                            'SaveButton_Getexistinggame');
+                                        _model.dateGame =
+                                            await queryGamesRecordOnce(
+                                          queryBuilder: (gamesRecord) =>
+                                              gamesRecord
+                                                  .where(
+                                                    'matchupId',
+                                                    isEqualTo: _model.matchupId,
+                                                  )
+                                                  .where(
+                                                    'date',
+                                                    isGreaterThanOrEqualTo: _model
+                                                                .datePicked
+                                                                ?.toString() ==
+                                                            null
+                                                        ? functions
+                                                            .getTodayDate()
+                                                        : _model.datePicked,
+                                                  )
+                                                  .where(
+                                                    'date',
+                                                    isLessThan: functions
+                                                        .getDayAfterDate(_model
+                                                                    .datePicked
+                                                                    ?.toString() ==
+                                                                null
+                                                            ? functions
+                                                                .getTodayDate()
+                                                            : _model
+                                                                .datePicked!),
+                                                  ),
+                                          singleRecord: true,
+                                        ).then((s) => s.firstOrNull);
+                                        // Get game Players
+                                        logFirebaseEvent(
+                                            'SaveButton_GetgamePlayers');
+                                        _model.dateGamePlayers =
+                                            await queryPlayersRecordOnce(
+                                          parent: _model.dateGame?.reference,
+                                        );
+                                        // Update Player1's Score
+                                        logFirebaseEvent(
+                                            'SaveButton_UpdatePlayer1\'sScore');
+
+                                        firestoreBatch.update(
+                                            _model.dateGamePlayers!
+                                                .where((e) =>
+                                                    e.deckName ==
+                                                    _model
+                                                        .player1Model
+                                                        .deckSelectModel
+                                                        .deckSelectValue)
+                                                .toList()
+                                                .first
+                                                .reference,
+                                            {
+                                              ...mapToFirestore(
+                                                {
+                                                  'score': FieldValue.increment(
+                                                      _model
+                                                          .player1CountScoreValue!),
+                                                },
+                                              ),
+                                            });
+                                        // Update Player2's Score
+                                        logFirebaseEvent(
+                                            'SaveButton_UpdatePlayer2\'sScore');
+
+                                        firestoreBatch.update(
+                                            _model.dateGamePlayers!
+                                                .where((e) =>
+                                                    e.deckName ==
+                                                    _model
+                                                        .player2Model
+                                                        .deckSelectModel
+                                                        .deckSelectValue)
+                                                .toList()
+                                                .first
+                                                .reference,
+                                            {
+                                              ...mapToFirestore(
+                                                {
+                                                  'score': FieldValue.increment(
+                                                      _model
+                                                          .player2CountScoreValue!),
+                                                },
+                                              ),
+                                            });
+                                        // Get related Matchup
+                                        logFirebaseEvent(
+                                            'SaveButton_GetrelatedMatchup');
+                                        _model.matchupDocExistingGame =
                                             await queryMatchupsRecordOnce(
                                           queryBuilder: (matchupsRecord) =>
                                               matchupsRecord.where(
@@ -783,126 +646,405 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                                           singleRecord: true,
                                         ).then((s) => s.firstOrNull);
                                         // Calculate matchup Score
-                                        _model.updatedMatchupScoreNewGame =
+                                        logFirebaseEvent(
+                                            'SaveButton_CalculatematchupScore');
+                                        _model.updatedMatchupScoreExistingGame =
                                             await actions.updateScores(
                                           _model.deck1!.deckId,
                                           _model.player1CountScoreValue!,
                                           _model.deck2!.deckId,
                                           _model.player2CountScoreValue!,
-                                          _model.matchupDocNewGame!.scores
+                                          _model.matchupDocExistingGame!.scores
                                               .toList(),
                                         );
                                         // Update Matchup score
                                         // Update matchup Score
+                                        logFirebaseEvent(
+                                            'SaveButton_UpdatematchupScore');
 
-                                        await _model
-                                            .matchupDocNewGame!.reference
-                                            .update({
-                                          ...mapToFirestore(
+                                        firestoreBatch.update(
+                                            _model.matchupDocExistingGame!
+                                                .reference,
                                             {
-                                              'scores':
-                                                  getScoreListFirestoreData(
-                                                _model
-                                                    .updatedMatchupScoreNewGame,
+                                              ...mapToFirestore(
+                                                {
+                                                  'scores':
+                                                      getScoreListFirestoreData(
+                                                    _model
+                                                        .updatedMatchupScoreExistingGame,
+                                                  ),
+                                                },
                                               ),
-                                            },
-                                          ),
+                                            });
+                                        // Clear form values
+                                        logFirebaseEvent(
+                                            'SaveButton_Clearformvalues');
+                                        setState(() {
+                                          FFAppState().deck1Selected = false;
+                                          FFAppState().deck2Selected = false;
                                         });
-                                      } else {
-                                        // Calculate matchup Score
-                                        _model.newMatchupScore =
-                                            await actions.createScores(
-                                          _model.deck1!.deckId,
-                                          _model.player1CountScoreValue!,
-                                          _model.deck2!.deckId,
-                                          _model.player2CountScoreValue!,
+                                        // Game updated!
+                                        logFirebaseEvent(
+                                            'SaveButton_Gameupdated!');
+                                        ScaffoldMessenger.of(context)
+                                            .clearSnackBars();
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              valueOrDefault<String>(
+                                                (String appLanguage) {
+                                                  return appLanguage == 'fr'
+                                                      ? 'Partie mise à jour !'
+                                                      : 'Game updated!';
+                                                }(FFLocalizations.of(context)
+                                                    .languageCode),
+                                                'Game updated!',
+                                              ),
+                                              style: GoogleFonts.getFont(
+                                                'Noto Sans',
+                                                color:
+                                                    FlutterFlowTheme.of(context)
+                                                        .primary,
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 16.0,
+                                              ),
+                                            ),
+                                            duration:
+                                                Duration(milliseconds: 4000),
+                                            backgroundColor:
+                                                FlutterFlowTheme.of(context)
+                                                    .tertiary,
+                                          ),
                                         );
-                                        // Create Matchup
+                                      } else {
+                                        // Create new Game
+                                        logFirebaseEvent(
+                                            'SaveButton_CreatenewGame');
 
-                                        var matchupsRecordReference =
-                                            MatchupsRecord.collection.doc();
-                                        await matchupsRecordReference.set({
-                                          ...createMatchupsRecordData(
-                                            matchupId: _model.matchupId,
+                                        var gamesRecordReference =
+                                            GamesRecord.collection.doc();
+                                        firestoreBatch
+                                            .set(gamesRecordReference, {
+                                          ...createGamesRecordData(
+                                            date:
+                                                _model.datePicked?.toString() ==
+                                                        null
+                                                    ? getCurrentTimestamp
+                                                    : _model.datePicked,
                                             crewId: valueOrDefault(
                                                 currentUserDocument?.crewId,
                                                 ''),
                                           ),
                                           ...mapToFirestore(
                                             {
-                                              'gameIds': [
-                                                _model.newGameDoc?.reference.id
-                                              ],
                                               'deckIds': (String deckId1,
                                                       String deckId2) {
                                                 return [deckId1, deckId2];
                                               }(_model.deck1!.deckId,
                                                   _model.deck2!.deckId),
-                                              'scores':
-                                                  getScoreListFirestoreData(
-                                                _model.newMatchupScore,
-                                              ),
                                             },
                                           ),
                                         });
-                                        _model.newMatchupDoc =
-                                            MatchupsRecord.getDocumentFromData({
-                                          ...createMatchupsRecordData(
-                                            matchupId: _model.matchupId,
+                                        _model.newGameDoc =
+                                            GamesRecord.getDocumentFromData({
+                                          ...createGamesRecordData(
+                                            date:
+                                                _model.datePicked?.toString() ==
+                                                        null
+                                                    ? getCurrentTimestamp
+                                                    : _model.datePicked,
                                             crewId: valueOrDefault(
                                                 currentUserDocument?.crewId,
                                                 ''),
                                           ),
                                           ...mapToFirestore(
                                             {
-                                              'gameIds': [
-                                                _model.newGameDoc?.reference.id
-                                              ],
                                               'deckIds': (String deckId1,
                                                       String deckId2) {
                                                 return [deckId1, deckId2];
                                               }(_model.deck1!.deckId,
                                                   _model.deck2!.deckId),
-                                              'scores':
-                                                  getScoreListFirestoreData(
-                                                _model.newMatchupScore,
-                                              ),
                                             },
                                           ),
-                                        }, matchupsRecordReference);
+                                        }, gamesRecordReference);
+                                        // Create Player1
+                                        logFirebaseEvent(
+                                            'SaveButton_CreatePlayer1');
+
+                                        var playersRecordReference1 =
+                                            PlayersRecord.createDoc(
+                                                _model.newGameDoc!.reference);
+                                        firestoreBatch.set(
+                                            playersRecordReference1,
+                                            createPlayersRecordData(
+                                              score:
+                                                  _model.player1CountScoreValue,
+                                              deckName: _model
+                                                  .player1Model
+                                                  .deckSelectModel
+                                                  .deckSelectValue,
+                                              deckId: _model.deck1?.deckId,
+                                              crewmateId:
+                                                  _model.deck1?.crewmateId,
+                                              crewId: _model.deck1?.crewId,
+                                              deckRef:
+                                                  functions.fromDeckIdToRef(
+                                                      _model.deck1!.deckId),
+                                              crewmateRef:
+                                                  functions.fromCrewmateIdToRef(
+                                                      _model.deck1!.crewmateId,
+                                                      _model.deck1!.crewId),
+                                            ));
+                                        _model.player1Doc =
+                                            PlayersRecord.getDocumentFromData(
+                                                createPlayersRecordData(
+                                                  score: _model
+                                                      .player1CountScoreValue,
+                                                  deckName: _model
+                                                      .player1Model
+                                                      .deckSelectModel
+                                                      .deckSelectValue,
+                                                  deckId: _model.deck1?.deckId,
+                                                  crewmateId:
+                                                      _model.deck1?.crewmateId,
+                                                  crewId: _model.deck1?.crewId,
+                                                  deckRef:
+                                                      functions.fromDeckIdToRef(
+                                                          _model.deck1!.deckId),
+                                                  crewmateRef: functions
+                                                      .fromCrewmateIdToRef(
+                                                          _model.deck1!
+                                                              .crewmateId,
+                                                          _model.deck1!.crewId),
+                                                ),
+                                                playersRecordReference1);
+                                        // Create Player2
+                                        logFirebaseEvent(
+                                            'SaveButton_CreatePlayer2');
+
+                                        var playersRecordReference2 =
+                                            PlayersRecord.createDoc(
+                                                _model.newGameDoc!.reference);
+                                        firestoreBatch.set(
+                                            playersRecordReference2,
+                                            createPlayersRecordData(
+                                              score:
+                                                  _model.player2CountScoreValue,
+                                              deckName: _model
+                                                  .player2Model
+                                                  .deckSelectModel
+                                                  .deckSelectValue,
+                                              deckId: _model.deck2?.deckId,
+                                              crewmateId:
+                                                  _model.deck2?.crewmateId,
+                                              crewId: _model.deck2?.crewId,
+                                              deckRef:
+                                                  functions.fromDeckIdToRef(
+                                                      _model.deck2!.deckId),
+                                              crewmateRef:
+                                                  functions.fromCrewmateIdToRef(
+                                                      _model.deck2!.crewmateId,
+                                                      _model.deck2!.crewId),
+                                            ));
+                                        _model.player2Doc =
+                                            PlayersRecord.getDocumentFromData(
+                                                createPlayersRecordData(
+                                                  score: _model
+                                                      .player2CountScoreValue,
+                                                  deckName: _model
+                                                      .player2Model
+                                                      .deckSelectModel
+                                                      .deckSelectValue,
+                                                  deckId: _model.deck2?.deckId,
+                                                  crewmateId:
+                                                      _model.deck2?.crewmateId,
+                                                  crewId: _model.deck2?.crewId,
+                                                  deckRef:
+                                                      functions.fromDeckIdToRef(
+                                                          _model.deck2!.deckId),
+                                                  crewmateRef: functions
+                                                      .fromCrewmateIdToRef(
+                                                          _model.deck2!
+                                                              .crewmateId,
+                                                          _model.deck2!.crewId),
+                                                ),
+                                                playersRecordReference2);
+                                        // Check if Matchup exists
+                                        logFirebaseEvent(
+                                            'SaveButton_CheckifMatchupexists');
+                                        _model.hasMatchup =
+                                            await actions.checkIfMatchupExists(
+                                          _model.matchupId!,
+                                        );
+                                        if (_model.hasMatchup!) {
+                                          // Get existing Matchup
+                                          logFirebaseEvent(
+                                              'SaveButton_GetexistingMatchup');
+                                          _model.matchupDocNewGame =
+                                              await queryMatchupsRecordOnce(
+                                            queryBuilder: (matchupsRecord) =>
+                                                matchupsRecord.where(
+                                              'matchupId',
+                                              isEqualTo: _model.matchupId,
+                                            ),
+                                            singleRecord: true,
+                                          ).then((s) => s.firstOrNull);
+                                          // Calculate matchup Score
+                                          logFirebaseEvent(
+                                              'SaveButton_CalculatematchupScore');
+                                          _model.updatedMatchupScoreNewGame =
+                                              await actions.updateScores(
+                                            _model.deck1!.deckId,
+                                            _model.player1CountScoreValue!,
+                                            _model.deck2!.deckId,
+                                            _model.player2CountScoreValue!,
+                                            _model.matchupDocNewGame!.scores
+                                                .toList(),
+                                          );
+                                          // Update Matchup score
+                                          // Update matchup Score
+                                          logFirebaseEvent(
+                                              'SaveButton_UpdatematchupScore');
+
+                                          firestoreBatch.update(
+                                              _model
+                                                  .matchupDocNewGame!.reference,
+                                              {
+                                                ...mapToFirestore(
+                                                  {
+                                                    'scores':
+                                                        getScoreListFirestoreData(
+                                                      _model
+                                                          .updatedMatchupScoreNewGame,
+                                                    ),
+                                                  },
+                                                ),
+                                              });
+                                        } else {
+                                          // Calculate matchup Score
+                                          logFirebaseEvent(
+                                              'SaveButton_CalculatematchupScore');
+                                          _model.newMatchupScore =
+                                              await actions.createScores(
+                                            _model.deck1!.deckId,
+                                            _model.player1CountScoreValue!,
+                                            _model.deck2!.deckId,
+                                            _model.player2CountScoreValue!,
+                                          );
+                                          // Create Matchup
+                                          logFirebaseEvent(
+                                              'SaveButton_CreateMatchup');
+
+                                          var matchupsRecordReference =
+                                              MatchupsRecord.collection.doc();
+                                          firestoreBatch
+                                              .set(matchupsRecordReference, {
+                                            ...createMatchupsRecordData(
+                                              matchupId: _model.matchupId,
+                                              crewId: valueOrDefault(
+                                                  currentUserDocument?.crewId,
+                                                  ''),
+                                            ),
+                                            ...mapToFirestore(
+                                              {
+                                                'gameIds': [
+                                                  _model
+                                                      .newGameDoc?.reference.id
+                                                ],
+                                                'deckIds': (String deckId1,
+                                                        String deckId2) {
+                                                  return [deckId1, deckId2];
+                                                }(_model.deck1!.deckId,
+                                                    _model.deck2!.deckId),
+                                                'scores':
+                                                    getScoreListFirestoreData(
+                                                  _model.newMatchupScore,
+                                                ),
+                                              },
+                                            ),
+                                          });
+                                          _model.newMatchupDoc = MatchupsRecord
+                                              .getDocumentFromData({
+                                            ...createMatchupsRecordData(
+                                              matchupId: _model.matchupId,
+                                              crewId: valueOrDefault(
+                                                  currentUserDocument?.crewId,
+                                                  ''),
+                                            ),
+                                            ...mapToFirestore(
+                                              {
+                                                'gameIds': [
+                                                  _model
+                                                      .newGameDoc?.reference.id
+                                                ],
+                                                'deckIds': (String deckId1,
+                                                        String deckId2) {
+                                                  return [deckId1, deckId2];
+                                                }(_model.deck1!.deckId,
+                                                    _model.deck2!.deckId),
+                                                'scores':
+                                                    getScoreListFirestoreData(
+                                                  _model.newMatchupScore,
+                                                ),
+                                              },
+                                            ),
+                                          }, matchupsRecordReference);
+                                        }
+
+                                        // Clear form values
+                                        logFirebaseEvent(
+                                            'SaveButton_Clearformvalues');
+                                        setState(() {
+                                          FFAppState().deck1Selected = false;
+                                          FFAppState().deck2Selected = false;
+                                        });
+                                        // Game saved!
+                                        logFirebaseEvent(
+                                            'SaveButton_Gamesaved!');
+                                        ScaffoldMessenger.of(context)
+                                            .clearSnackBars();
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              valueOrDefault<String>(
+                                                (String appLanguage) {
+                                                  return appLanguage == 'fr'
+                                                      ? 'Partie sauvegardée !'
+                                                      : 'Game saved!';
+                                                }(FFLocalizations.of(context)
+                                                    .languageCode),
+                                                'Game saved!',
+                                              ),
+                                              style: GoogleFonts.getFont(
+                                                'Noto Sans',
+                                                color:
+                                                    FlutterFlowTheme.of(context)
+                                                        .primary,
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 16.0,
+                                              ),
+                                            ),
+                                            duration:
+                                                Duration(milliseconds: 4000),
+                                            backgroundColor:
+                                                FlutterFlowTheme.of(context)
+                                                    .tertiary,
+                                          ),
+                                        );
                                       }
 
-                                      // Clear form values
-                                      setState(() {
-                                        FFAppState().deck1Selected = false;
-                                        FFAppState().deck2Selected = false;
-                                      });
-                                      // Game saved!
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Game saved!',
-                                            style: GoogleFonts.getFont(
-                                              'Noto Sans',
-                                              color:
-                                                  FlutterFlowTheme.of(context)
-                                                      .primary,
-                                            ),
-                                          ),
-                                          duration:
-                                              Duration(milliseconds: 4000),
-                                          backgroundColor:
-                                              FlutterFlowTheme.of(context)
-                                                  .tertiary,
-                                        ),
-                                      );
+                                      // Leave form
+                                      logFirebaseEvent('SaveButton_Leaveform');
+                                      context.safePop();
+                                      // Rebuild page
+                                      logFirebaseEvent(
+                                          'SaveButton_Rebuildpage');
+                                      FFAppState().update(() {});
+                                    } finally {
+                                      await firestoreBatch.commit();
                                     }
-
-                                    // Leave form
-                                    context.safePop();
-                                    // Rebuild page
-                                    FFAppState().update(() {});
 
                                     setState(() {});
                                   },
@@ -916,8 +1058,7 @@ class _B2AddMatchupWidgetState extends State<B2AddMatchupWidget> {
                             options: FFButtonOptions(
                               width: 280.0,
                               height: 56.0,
-                              padding: EdgeInsetsDirectional.fromSTEB(
-                                  0.0, 0.0, 0.0, 0.0),
+                              padding: EdgeInsets.all(0.0),
                               iconPadding: EdgeInsetsDirectional.fromSTEB(
                                   0.0, 0.0, 8.0, 0.0),
                               color: FlutterFlowTheme.of(context).primary,

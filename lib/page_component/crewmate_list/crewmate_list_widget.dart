@@ -5,7 +5,6 @@ import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/page_component/crewmate_form/crewmate_form_widget.dart';
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -62,7 +61,7 @@ class _CrewmateListWidgetState extends State<CrewmateListWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             Align(
-              alignment: AlignmentDirectional(-1.00, 0.00),
+              alignment: AlignmentDirectional(-1.0, 0.0),
               child: Padding(
                 padding: EdgeInsetsDirectional.fromSTEB(0.0, 20.0, 0.0, 8.0),
                 child: Text(
@@ -84,8 +83,7 @@ class _CrewmateListWidgetState extends State<CrewmateListWidget> {
               children: [
                 Expanded(
                   child: Padding(
-                    padding:
-                        EdgeInsetsDirectional.fromSTEB(12.0, 12.0, 12.0, 12.0),
+                    padding: EdgeInsets.all(12.0),
                     child: Text(
                       FFLocalizations.of(context).getText(
                         '068litq8' /* Add a Crewmate */,
@@ -117,17 +115,15 @@ class _CrewmateListWidgetState extends State<CrewmateListWidget> {
                       onPressed: () async {
                         logFirebaseEvent(
                             'CREWMATE_LIST_COMP_AddCrewmate_ON_TAP');
-                        await showAlignedDialog(
+                        logFirebaseEvent('AddCrewmate_alert_dialog');
+                        await showDialog(
                           context: context,
-                          isGlobal: true,
-                          avoidOverflow: false,
-                          targetAnchor: AlignmentDirectional(0.0, 0.0)
-                              .resolve(Directionality.of(context)),
-                          followerAnchor: AlignmentDirectional(0.0, 0.0)
-                              .resolve(Directionality.of(context)),
                           builder: (dialogContext) {
-                            return Material(
-                              color: Colors.transparent,
+                            return Dialog(
+                              insetPadding: EdgeInsets.zero,
+                              backgroundColor: Colors.transparent,
+                              alignment: AlignmentDirectional(0.0, 0.0)
+                                  .resolve(Directionality.of(context)),
                               child: CrewmateFormWidget(
                                 formTitle: FFLocalizations.of(context).getText(
                                   'gqe6012i' /* New Crewmate */,
@@ -183,7 +179,6 @@ class _CrewmateListWidgetState extends State<CrewmateListWidget> {
                     }
                     return ListView.builder(
                       padding: EdgeInsets.zero,
-                      shrinkWrap: true,
                       scrollDirection: Axis.vertical,
                       itemCount: cremateListCrewmatesRecordList.length,
                       itemBuilder: (context, cremateListIndex) {
@@ -210,7 +205,7 @@ class _CrewmateListWidgetState extends State<CrewmateListWidget> {
                                 ],
                                 borderRadius: BorderRadius.circular(30.0),
                               ),
-                              alignment: AlignmentDirectional(0.00, 0.00),
+                              alignment: AlignmentDirectional(0.0, 0.0),
                               child: Row(
                                 mainAxisSize: MainAxisSize.max,
                                 mainAxisAlignment: MainAxisAlignment.start,
@@ -232,7 +227,7 @@ class _CrewmateListWidgetState extends State<CrewmateListWidget> {
                                     ),
                                   ),
                                   Align(
-                                    alignment: AlignmentDirectional(1.00, 0.00),
+                                    alignment: AlignmentDirectional(1.0, 0.0),
                                     child: Builder(
                                       builder: (context) => Padding(
                                         padding: EdgeInsetsDirectional.fromSTEB(
@@ -250,23 +245,21 @@ class _CrewmateListWidgetState extends State<CrewmateListWidget> {
                                           onPressed: () async {
                                             logFirebaseEvent(
                                                 'CREWMATE_LIST_COMP_Edit_ON_TAP');
-                                            await showAlignedDialog(
+                                            logFirebaseEvent(
+                                                'Edit_alert_dialog');
+                                            await showDialog(
                                               context: context,
-                                              isGlobal: true,
-                                              avoidOverflow: false,
-                                              targetAnchor:
-                                                  AlignmentDirectional(0.0, 0.0)
-                                                      .resolve(
-                                                          Directionality.of(
-                                                              context)),
-                                              followerAnchor:
-                                                  AlignmentDirectional(0.0, 0.0)
-                                                      .resolve(
-                                                          Directionality.of(
-                                                              context)),
                                               builder: (dialogContext) {
-                                                return Material(
-                                                  color: Colors.transparent,
+                                                return Dialog(
+                                                  insetPadding: EdgeInsets.zero,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  alignment:
+                                                      AlignmentDirectional(
+                                                              0.0, 0.0)
+                                                          .resolve(
+                                                              Directionality.of(
+                                                                  context)),
                                                   child: CrewmateFormWidget(
                                                     formTitle:
                                                         FFLocalizations.of(
@@ -293,7 +286,7 @@ class _CrewmateListWidgetState extends State<CrewmateListWidget> {
                                     ),
                                   ),
                                   Align(
-                                    alignment: AlignmentDirectional(1.00, 0.00),
+                                    alignment: AlignmentDirectional(1.0, 0.0),
                                     child: Padding(
                                       padding: EdgeInsetsDirectional.fromSTEB(
                                           8.0, 2.0, 4.0, 0.0),
@@ -311,9 +304,44 @@ class _CrewmateListWidgetState extends State<CrewmateListWidget> {
                                         onPressed: () async {
                                           logFirebaseEvent(
                                               'CREWMATE_LIST_COMP_Delete_ON_TAP');
+                                          logFirebaseEvent(
+                                              'Delete_backend_call');
                                           await cremateListCrewmatesRecord
                                               .reference
                                               .delete();
+                                          logFirebaseEvent(
+                                              'Delete_show_snack_bar');
+                                          ScaffoldMessenger.of(context)
+                                              .clearSnackBars();
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                valueOrDefault<String>(
+                                                  FFLocalizations.of(context)
+                                                      .getVariableText(
+                                                    enText: 'Crewmate deleted!',
+                                                    frText:
+                                                        'Crewmate supprimé !',
+                                                  ),
+                                                  'Crewmate deleted!',
+                                                ),
+                                                style: GoogleFonts.getFont(
+                                                  'Noto Sans',
+                                                  color: FlutterFlowTheme.of(
+                                                          context)
+                                                      .primary,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 16.0,
+                                                ),
+                                              ),
+                                              duration:
+                                                  Duration(milliseconds: 4000),
+                                              backgroundColor:
+                                                  FlutterFlowTheme.of(context)
+                                                      .tertiary,
+                                            ),
+                                          );
                                         },
                                       ),
                                     ),

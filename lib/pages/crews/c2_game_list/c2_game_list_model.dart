@@ -21,7 +21,7 @@ import 'package:provider/provider.dart';
 class C2GameListModel extends FlutterFlowModel<C2GameListWidget> {
   ///  Local state fields for this page.
 
-  bool isDeckFilterOpen = true;
+  bool isDeckFilterOpen = false;
 
   List<String> filteredDeckList = [];
   void addToFilteredDeckList(String item) => filteredDeckList.add(item);

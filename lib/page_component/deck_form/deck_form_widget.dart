@@ -47,6 +47,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       logFirebaseEvent('DECK_FORM_COMP_DeckForm_ON_INIT_STATE');
       // Get all avatars
+      logFirebaseEvent('DeckForm_Getallavatars');
       _model.avatars = await queryImagesRecordOnce(
         queryBuilder: (imagesRecord) => imagesRecord.where(
           'type',
@@ -55,6 +56,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
         limit: 20,
       );
       // Set initial variable values
+      logFirebaseEvent('DeckForm_Setinitialvariablevalues');
       setState(() {
         _model.areCardsLoaded = false;
         _model.isWhite = false;
@@ -81,8 +83,10 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
 
     _model.nameInputController ??= TextEditingController();
     _model.nameInputFocusNode ??= FocusNode();
+
     _model.avatarInputController ??= TextEditingController();
     _model.avatarInputFocusNode ??= FocusNode();
+
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
@@ -127,7 +131,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                     ),
                   ),
                   Align(
-                    alignment: AlignmentDirectional(-1.00, 0.00),
+                    alignment: AlignmentDirectional(-1.0, 0.0),
                     child: Padding(
                       padding:
                           EdgeInsetsDirectional.fromSTEB(20.0, 20.0, 0.0, 8.0),
@@ -218,10 +222,9 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                     mainAxisSize: MainAxisSize.max,
                     children: [
                       Align(
-                        alignment: AlignmentDirectional(-1.00, 0.00),
+                        alignment: AlignmentDirectional(-1.0, 0.0),
                         child: Padding(
-                          padding: EdgeInsetsDirectional.fromSTEB(
-                              20.0, 20.0, 20.0, 20.0),
+                          padding: EdgeInsets.all(20.0),
                           child: Text(
                             FFLocalizations.of(context).getText(
                               'j233lymk' /* Avatar selection */,
@@ -299,10 +302,12 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                     onTap: () async {
                                       logFirebaseEvent(
                                           'DECK_FORM_COMP_Text_nkzaw07s_ON_TAP');
+                                      logFirebaseEvent('Text_set_form_field');
                                       setState(() {
                                         _model.switchValue = false;
                                       });
                                       // Set a random avatar
+                                      logFirebaseEvent('Text_Setarandomavatar');
                                       setState(() {
                                         _model.selectedAvatar =
                                             valueOrDefault<String>(
@@ -334,7 +339,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               ],
                             ),
                             Align(
-                              alignment: AlignmentDirectional(1.00, 0.00),
+                              alignment: AlignmentDirectional(1.0, 0.0),
                               child: Padding(
                                 padding: EdgeInsetsDirectional.fromSTEB(
                                     4.0, 0.0, 4.0, 0.0),
@@ -348,6 +353,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                       logFirebaseEvent(
                                           'DECK_FORM_Switch_2m8fzfvk_ON_TOGGLE_OFF');
                                       // Set a random avatar
+                                      logFirebaseEvent(
+                                          'Switch_Setarandomavatar');
                                       setState(() {
                                         _model.selectedAvatar =
                                             valueOrDefault<String>(
@@ -430,6 +437,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                     onTap: () async {
                                       logFirebaseEvent(
                                           'DECK_FORM_COMP_Text_jd48txew_ON_TAP');
+                                      logFirebaseEvent('Text_set_form_field');
                                       setState(() {
                                         _model.switchValue = true;
                                       });
@@ -476,9 +484,13 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_avatar_input_ON_TEXTFIELD_CHAN');
+                                    logFirebaseEvent(
+                                        'avatar_input_update_component_state');
                                     setState(() {
                                       _model.areCardsLoaded = false;
                                     });
+                                    logFirebaseEvent(
+                                        'avatar_input_backend_call');
                                     _model.apiResultlta =
                                         await ScryfallIlluByNameCall.call(
                                       cardName:
@@ -499,18 +511,23 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                           .map<String>((s) => s.toString())
                                           .toList())) {
                                         // Display results
+                                        logFirebaseEvent(
+                                            'avatar_input_Displayresults');
                                         setState(() {
                                           _model.areCardsLoaded = true;
                                           _model.noResult = false;
                                         });
                                       } else {
                                         // No result
+                                        logFirebaseEvent(
+                                            'avatar_input_Noresult');
                                         setState(() {
                                           _model.noResult = true;
                                         });
                                       }
                                     } else {
                                       // No result
+                                      logFirebaseEvent('avatar_input_Noresult');
                                       setState(() {
                                         _model.noResult = true;
                                       });
@@ -606,54 +623,21 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                             Padding(
                               padding: EdgeInsetsDirectional.fromSTEB(
                                   20.0, 12.0, 20.0, 12.0),
-                              child: FutureBuilder<List<ImagesRecord>>(
-                                future: FFAppState().avatarQuery(
-                                  requestFn: () => queryImagesRecordOnce(
-                                    queryBuilder: (imagesRecord) =>
-                                        imagesRecord.where(
-                                      'type',
-                                      isEqualTo: 'avatar',
-                                    ),
-                                    limit: 20,
-                                  ),
+                              child: Container(
+                                width: 120.0,
+                                height: 120.0,
+                                clipBehavior: Clip.antiAlias,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
                                 ),
-                                builder: (context, snapshot) {
-                                  // Customize what your widget looks like when it's loading.
-                                  if (!snapshot.hasData) {
-                                    return Center(
-                                      child: SizedBox(
-                                        width: 50.0,
-                                        height: 50.0,
-                                        child: SpinKitFadingFour(
-                                          color: Color(0xFFE6486F),
-                                          size: 50.0,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  List<ImagesRecord>
-                                      circleImageImagesRecordList =
-                                      snapshot.data!;
-                                  return Container(
-                                    width: 120.0,
-                                    height: 120.0,
-                                    clipBehavior: Clip.antiAlias,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Image.network(
-                                      valueOrDefault<String>(
-                                        _model
-                                            .avatars?[_model.randomAvatarNumber]
-                                            ?.image
-                                            ?.first
-                                            ?.downloadURL,
-                                        'https://images.unsplash.com/photo-1481349518771-20055b2a7b24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cmFuZG9tfGVufDB8fDB8fHww&w=1000&q=80',
-                                      ),
-                                      fit: BoxFit.cover,
-                                    ),
-                                  );
-                                },
+                                child: Image.network(
+                                  valueOrDefault<String>(
+                                    _model.avatars?[_model.randomAvatarNumber]
+                                        ?.image?.first?.downloadURL,
+                                    'https://images.unsplash.com/photo-1481349518771-20055b2a7b24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cmFuZG9tfGVufDB8fDB8fHww&w=1000&q=80',
+                                  ),
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
                             FlutterFlowIconButton(
@@ -670,6 +654,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                 logFirebaseEvent(
                                     'DECK_FORM_COMP_refresh_ICN_ON_TAP');
                                 // Random new avatar
+                                logFirebaseEvent('IconButton_Randomnewavatar');
                                 setState(() {
                                   _model.randomAvatarNumber =
                                       valueOrDefault<int>(
@@ -687,6 +672,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   );
                                 });
                                 // Update selectedAvatar
+                                logFirebaseEvent(
+                                    'IconButton_UpdateselectedAvatar');
                                 setState(() {
                                   _model.selectedAvatar =
                                       valueOrDefault<String>(
@@ -748,7 +735,6 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                     ).toList();
                                     return ListView.builder(
                                       padding: EdgeInsets.zero,
-                                      shrinkWrap: true,
                                       scrollDirection: Axis.vertical,
                                       itemCount: searchedCards.length,
                                       itemBuilder:
@@ -767,12 +753,14 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                             onTap: () async {
                                               logFirebaseEvent(
                                                   'DECK_FORM_COMP_item_container_ON_TAP');
+                                              logFirebaseEvent(
+                                                  'item_container_update_component_state');
                                               setState(() {
                                                 _model.selectedAvatar =
                                                     getJsonField(
                                                   searchedCardsItem,
                                                   r'''$.image_uris.art_crop''',
-                                                );
+                                                ).toString();
                                                 _model.selectedCardName =
                                                     getJsonField(
                                                   searchedCardsItem,
@@ -807,7 +795,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                                           30.0),
                                                 ),
                                                 alignment: AlignmentDirectional(
-                                                    0.00, 0.00),
+                                                    0.0, 0.0),
                                                 child: Row(
                                                   mainAxisSize:
                                                       MainAxisSize.max,
@@ -833,7 +821,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                                           getJsonField(
                                                             searchedCardsItem,
                                                             r'''$.image_uris.art_crop''',
-                                                          ),
+                                                          )?.toString(),
                                                           'https://cdn.pixabay.com/photo/2017/05/21/20/53/fern-2332262_1280.jpg',
                                                         ),
                                                         fit: BoxFit.cover,
@@ -852,7 +840,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                                           getJsonField(
                                                             searchedCardsItem,
                                                             r'''$.name''',
-                                                          ).toString(),
+                                                          )?.toString(),
                                                           '\"\"',
                                                         ).maybeHandleOverflow(
                                                           maxChars: 15,
@@ -906,8 +894,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                       ),
                                     ),
                                     Align(
-                                      alignment:
-                                          AlignmentDirectional(0.00, 0.00),
+                                      alignment: AlignmentDirectional(0.0, 0.0),
                                       child: Padding(
                                         padding: EdgeInsetsDirectional.fromSTEB(
                                             0.0, 4.0, 0.0, 0.0),
@@ -965,7 +952,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                 ],
                                 borderRadius: BorderRadius.circular(30.0),
                               ),
-                              alignment: AlignmentDirectional(0.00, 0.00),
+                              alignment: AlignmentDirectional(0.0, 0.0),
                               child: Row(
                                 mainAxisSize: MainAxisSize.max,
                                 mainAxisAlignment: MainAxisAlignment.start,
@@ -999,8 +986,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   ),
                                   Expanded(
                                     child: Align(
-                                      alignment:
-                                          AlignmentDirectional(1.00, 0.00),
+                                      alignment: AlignmentDirectional(1.0, 0.0),
                                       child: Padding(
                                         padding: EdgeInsetsDirectional.fromSTEB(
                                             0.0, 0.0, 4.0, 0.0),
@@ -1012,6 +998,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                           onTap: () async {
                                             logFirebaseEvent(
                                                 'DECK_FORM_COMP_Icon_82mv02wk_ON_TAP');
+                                            logFirebaseEvent(
+                                                'Icon_update_component_state');
                                             setState(() {
                                               _model.areCardsLoaded = true;
                                               _model.selectedAvatar = null;
@@ -1042,7 +1030,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                     color: FlutterFlowTheme.of(context).accent4,
                   ),
                   Align(
-                    alignment: AlignmentDirectional(-1.00, 0.00),
+                    alignment: AlignmentDirectional(-1.0, 0.0),
                     child: Padding(
                       padding:
                           EdgeInsetsDirectional.fromSTEB(20.0, 20.0, 0.0, 8.0),
@@ -1110,7 +1098,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                     color: FlutterFlowTheme.of(context).accent4,
                   ),
                   Align(
-                    alignment: AlignmentDirectional(-1.00, 0.00),
+                    alignment: AlignmentDirectional(-1.0, 0.0),
                     child: Padding(
                       padding:
                           EdgeInsetsDirectional.fromSTEB(20.0, 20.0, 0.0, 8.0),
@@ -1137,7 +1125,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                       ),
-                      alignment: AlignmentDirectional(0.00, 0.00),
+                      alignment: AlignmentDirectional(0.0, 0.0),
                       child: Padding(
                         padding:
                             EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
@@ -1148,7 +1136,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               true,
                             ))
                               Align(
-                                alignment: AlignmentDirectional(0.70, 1.00),
+                                alignment: AlignmentDirectional(0.7, 1.0),
                                 child: FlutterFlowIconButton(
                                   borderColor: Color(0x004B39EF),
                                   borderRadius: 20.0,
@@ -1164,6 +1152,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_black_unactive_ON_TAP');
+                                    logFirebaseEvent(
+                                        'black_unactive_update_component_state');
                                     setState(() {
                                       _model.isBlack = true;
                                     });
@@ -1172,7 +1162,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               ),
                             if (_model.isBlack)
                               Align(
-                                alignment: AlignmentDirectional(0.70, 1.00),
+                                alignment: AlignmentDirectional(0.7, 1.0),
                                 child: FlutterFlowIconButton(
                                   borderColor: Colors.transparent,
                                   borderRadius: 20.0,
@@ -1187,6 +1177,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_black_active_ON_TAP');
+                                    logFirebaseEvent(
+                                        'black_active_update_component_state');
                                     setState(() {
                                       _model.isBlack = false;
                                     });
@@ -1195,7 +1187,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               ),
                             if (!_model.isWhite)
                               Align(
-                                alignment: AlignmentDirectional(0.00, -1.00),
+                                alignment: AlignmentDirectional(0.0, -1.0),
                                 child: FlutterFlowIconButton(
                                   borderColor: Colors.transparent,
                                   borderRadius: 20.0,
@@ -1210,6 +1202,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_white_unactive_ON_TAP');
+                                    logFirebaseEvent(
+                                        'white_unactive_update_component_state');
                                     setState(() {
                                       _model.isWhite = true;
                                     });
@@ -1218,7 +1212,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               ),
                             if (_model.isWhite)
                               Align(
-                                alignment: AlignmentDirectional(0.00, -1.00),
+                                alignment: AlignmentDirectional(0.0, -1.0),
                                 child: FlutterFlowIconButton(
                                   borderColor: Colors.transparent,
                                   borderRadius: 20.0,
@@ -1233,6 +1227,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_white_active_ON_TAP');
+                                    logFirebaseEvent(
+                                        'white_active_update_component_state');
                                     setState(() {
                                       _model.isWhite = false;
                                     });
@@ -1244,7 +1240,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               false,
                             ))
                               Align(
-                                alignment: AlignmentDirectional(-0.70, 1.00),
+                                alignment: AlignmentDirectional(-0.7, 1.0),
                                 child: FlutterFlowIconButton(
                                   borderColor: Color(0x004B39EF),
                                   borderRadius: 20.0,
@@ -1260,6 +1256,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_red_unactive_ON_TAP');
+                                    logFirebaseEvent(
+                                        'red_unactive_update_component_state');
                                     setState(() {
                                       _model.isRed = true;
                                     });
@@ -1268,7 +1266,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               ),
                             if (_model.isRed)
                               Align(
-                                alignment: AlignmentDirectional(-0.70, 1.00),
+                                alignment: AlignmentDirectional(-0.7, 1.0),
                                 child: FlutterFlowIconButton(
                                   borderColor: Color(0x004B39EF),
                                   borderRadius: 20.0,
@@ -1283,6 +1281,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_red_active_ON_TAP');
+                                    logFirebaseEvent(
+                                        'red_active_update_component_state');
                                     setState(() {
                                       _model.isRed = false;
                                     });
@@ -1291,7 +1291,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               ),
                             if (!_model.isBlue)
                               Align(
-                                alignment: AlignmentDirectional(1.00, -0.30),
+                                alignment: AlignmentDirectional(1.0, -0.3),
                                 child: FlutterFlowIconButton(
                                   borderColor: Colors.transparent,
                                   borderRadius: 20.0,
@@ -1307,6 +1307,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_blue_unactive_ON_TAP');
+                                    logFirebaseEvent(
+                                        'blue_unactive_update_component_state');
                                     setState(() {
                                       _model.isBlue = true;
                                     });
@@ -1315,7 +1317,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               ),
                             if (_model.isBlue)
                               Align(
-                                alignment: AlignmentDirectional(1.00, -0.30),
+                                alignment: AlignmentDirectional(1.0, -0.3),
                                 child: FlutterFlowIconButton(
                                   borderColor: Colors.transparent,
                                   borderRadius: 20.0,
@@ -1330,6 +1332,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_blue_active_ON_TAP');
+                                    logFirebaseEvent(
+                                        'blue_active_update_component_state');
                                     setState(() {
                                       _model.isBlue = false;
                                     });
@@ -1338,7 +1342,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               ),
                             if (!_model.isGreen)
                               Align(
-                                alignment: AlignmentDirectional(-1.00, -0.30),
+                                alignment: AlignmentDirectional(-1.0, -0.3),
                                 child: FlutterFlowIconButton(
                                   borderColor: Colors.transparent,
                                   borderRadius: 20.0,
@@ -1354,6 +1358,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_green_unactive_ON_TAP');
+                                    logFirebaseEvent(
+                                        'green_unactive_update_component_state');
                                     setState(() {
                                       _model.isGreen = true;
                                     });
@@ -1362,7 +1368,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               ),
                             if (_model.isGreen)
                               Align(
-                                alignment: AlignmentDirectional(-1.00, -0.30),
+                                alignment: AlignmentDirectional(-1.0, -0.3),
                                 child: FlutterFlowIconButton(
                                   borderColor: Colors.transparent,
                                   borderRadius: 20.0,
@@ -1377,6 +1383,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   onPressed: () async {
                                     logFirebaseEvent(
                                         'DECK_FORM_COMP_green_active_ON_TAP');
+                                    logFirebaseEvent(
+                                        'green_active_update_component_state');
                                     setState(() {
                                       _model.isGreen = false;
                                     });
@@ -1396,7 +1404,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Align(
-                            alignment: AlignmentDirectional(-1.00, 0.00),
+                            alignment: AlignmentDirectional(-1.0, 0.0),
                             child: Padding(
                               padding: EdgeInsetsDirectional.fromSTEB(
                                   20.0, 20.0, 0.0, 0.0),
@@ -1512,6 +1520,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                         final firestoreBatch =
                             FirebaseFirestore.instance.batch();
                         try {
+                          logFirebaseEvent(
+                              'save_button_update_component_state');
                           setState(() {
                             _model.showSnackbar = false;
                           });
@@ -1524,6 +1534,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                               if (_model.selectedCardName != null &&
                                   _model.selectedCardName != '') {
                                 // Get all crew decks
+                                logFirebaseEvent('save_button_Getallcrewdecks');
                                 _model.crewDecks = await queryDecksRecordOnce(
                                   queryBuilder: (decksRecord) =>
                                       decksRecord.where(
@@ -1541,6 +1552,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                     .contains(
                                         _model.nameInputController.text))) {
                                   // Get Crewmate
+                                  logFirebaseEvent('save_button_GetCrewmate');
                                   _model.crewmate =
                                       await queryCrewmatesRecordOnce(
                                     parent: currentUserDocument?.crewRef,
@@ -1553,6 +1565,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                     singleRecord: true,
                                   ).then((s) => s.firstOrNull);
                                   // Create Deck
+                                  logFirebaseEvent('save_button_CreateDeck');
 
                                   var decksRecordReference =
                                       DecksRecord.collection.doc();
@@ -1601,13 +1614,8 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   }, decksRecordReference);
                                   if (_model.crewmate?.userId != null &&
                                       _model.crewmate?.userId != '') {
-                                    // Deck name already taken
-                                    setState(() {
-                                      _model.showSnackbar = true;
-                                      _model.snackbarMessage =
-                                          _model.crewmate?.userId;
-                                    });
                                     // Update User
+                                    logFirebaseEvent('save_button_UpdateUser');
 
                                     firestoreBatch.update(
                                         _model.crewmate!.userReference!, {
@@ -1620,16 +1628,28 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                     });
                                   }
                                   // Leave form
+                                  logFirebaseEvent('save_button_Leaveform');
                                   Navigator.pop(context);
                                   // Deck saved!
+                                  logFirebaseEvent('save_button_Decksaved!');
+                                  ScaffoldMessenger.of(context)
+                                      .clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Deck saved!',
+                                        valueOrDefault<String>(
+                                          FFLocalizations.of(context)
+                                              .getVariableText(
+                                            enText: 'Deck saved!',
+                                            frText: 'Deck sauvegardé !',
+                                          ),
+                                          'Deck saved!',
+                                        ),
                                         style: GoogleFonts.getFont(
                                           'Noto Sans',
                                           color: FlutterFlowTheme.of(context)
                                               .primary,
+                                          fontWeight: FontWeight.w500,
                                           fontSize: 16.0,
                                         ),
                                       ),
@@ -1640,50 +1660,94 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                                   );
                                 } else {
                                   // Deck name already taken
+                                  logFirebaseEvent(
+                                      'save_button_Decknamealreadytaken');
                                   setState(() {
                                     _model.showSnackbar = true;
                                     _model.snackbarMessage =
-                                        'Deck name already taken';
+                                        valueOrDefault<String>(
+                                      FFLocalizations.of(context)
+                                          .getVariableText(
+                                        enText: 'Deck name already taken',
+                                        frText: 'Ce nom de deck est déjà pris',
+                                      ),
+                                      'Deck name already taken',
+                                    );
                                   });
+                                  logFirebaseEvent('save_button_wait__delay');
                                   await Future.delayed(
                                       const Duration(milliseconds: 4000));
+                                  logFirebaseEvent(
+                                      'save_button_update_component_state');
                                   setState(() {
                                     _model.showSnackbar = false;
                                   });
                                 }
                               } else {
                                 // You need an avatar
+                                logFirebaseEvent('save_button_Youneedanavatar');
                                 setState(() {
                                   _model.showSnackbar = true;
-                                  _model.snackbarMessage = 'You need an avatar';
+                                  _model.snackbarMessage =
+                                      valueOrDefault<String>(
+                                    FFLocalizations.of(context).getVariableText(
+                                      enText: 'You need an avatar',
+                                      frText: 'L\'avatar est requis',
+                                    ),
+                                    'You need an avatar',
+                                  );
                                 });
+                                logFirebaseEvent('save_button_wait__delay');
                                 await Future.delayed(
                                     const Duration(milliseconds: 4000));
+                                logFirebaseEvent(
+                                    'save_button_update_component_state');
                                 setState(() {
                                   _model.showSnackbar = false;
                                 });
                               }
                             } else {
                               // You need to select a deck owner
+                              logFirebaseEvent(
+                                  'save_button_Youneedtoselectadeckowner');
                               setState(() {
                                 _model.showSnackbar = true;
-                                _model.snackbarMessage =
-                                    'You need to select a deck owner';
+                                _model.snackbarMessage = valueOrDefault<String>(
+                                  FFLocalizations.of(context).getVariableText(
+                                    enText: 'You need to select a deck owner',
+                                    frText:
+                                        'Le propriétaire du deck est requis',
+                                  ),
+                                  'You need to select a deck owner',
+                                );
                               });
+                              logFirebaseEvent('save_button_wait__delay');
                               await Future.delayed(
                                   const Duration(milliseconds: 4000));
+                              logFirebaseEvent(
+                                  'save_button_update_component_state');
                               setState(() {
                                 _model.showSnackbar = false;
                               });
                             }
                           } else {
                             // You need a deck name
+                            logFirebaseEvent('save_button_Youneedadeckname');
                             setState(() {
                               _model.showSnackbar = true;
-                              _model.snackbarMessage = 'You need a deck name';
+                              _model.snackbarMessage = valueOrDefault<String>(
+                                FFLocalizations.of(context).getVariableText(
+                                  enText: 'You need a deck name',
+                                  frText: 'Le nom du deck est requis',
+                                ),
+                                'You need a deck name',
+                              );
                             });
+                            logFirebaseEvent('save_button_wait__delay');
                             await Future.delayed(
                                 const Duration(milliseconds: 4000));
+                            logFirebaseEvent(
+                                'save_button_update_component_state');
                             setState(() {
                               _model.showSnackbar = false;
                             });
@@ -1704,8 +1768,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
                       options: FFButtonOptions(
                         width: 280.0,
                         height: 56.0,
-                        padding:
-                            EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 0.0),
+                        padding: EdgeInsets.all(0.0),
                         iconPadding:
                             EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 8.0, 0.0),
                         color: FlutterFlowTheme.of(context).primary,
@@ -1725,7 +1788,7 @@ class _DeckFormWidgetState extends State<DeckFormWidget> {
           ),
           if (_model.showSnackbar)
             Align(
-              alignment: AlignmentDirectional(0.00, 1.00),
+              alignment: AlignmentDirectional(0.0, 1.0),
               child: wrapWithModel(
                 model: _model.customSnackbarModel,
                 updateCallback: () => setState(() {}),

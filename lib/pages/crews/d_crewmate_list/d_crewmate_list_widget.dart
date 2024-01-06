@@ -6,7 +6,6 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
 import '/page_component/crewmate_form/crewmate_form_widget.dart';
 import '/page_component/crewmate_list/crewmate_list_widget.dart';
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -79,6 +78,7 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
             ),
             onPressed: () async {
               logFirebaseEvent('D_CREWMATE_LIST_arrow_back_rounded_ICN_O');
+              logFirebaseEvent('IconButton_navigate_back');
               context.pop();
             },
           ),
@@ -133,7 +133,7 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
                 mainAxisSize: MainAxisSize.max,
                 children: [
                   Align(
-                    alignment: AlignmentDirectional(-1.00, 0.00),
+                    alignment: AlignmentDirectional(-1.0, 0.0),
                     child: Padding(
                       padding:
                           EdgeInsetsDirectional.fromSTEB(20.0, 20.0, 0.0, 8.0),
@@ -174,7 +174,7 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
                           ],
                           borderRadius: BorderRadius.circular(30.0),
                         ),
-                        alignment: AlignmentDirectional(0.00, 0.00),
+                        alignment: AlignmentDirectional(0.0, 0.0),
                         child: Row(
                           mainAxisSize: MainAxisSize.max,
                           mainAxisAlignment: MainAxisAlignment.start,
@@ -199,7 +199,7 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
                               ),
                             ),
                             Align(
-                              alignment: AlignmentDirectional(1.00, 0.00),
+                              alignment: AlignmentDirectional(1.0, 0.0),
                               child: Builder(
                                 builder: (context) => Padding(
                                   padding: EdgeInsetsDirectional.fromSTEB(
@@ -217,21 +217,18 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
                                     onPressed: () async {
                                       logFirebaseEvent(
                                           'D_CREWMATE_LIST_mode_edit_ICN_ON_TAP');
-                                      await showAlignedDialog(
+                                      logFirebaseEvent(
+                                          'IconButton_alert_dialog');
+                                      await showDialog(
                                         context: context,
-                                        isGlobal: true,
-                                        avoidOverflow: false,
-                                        targetAnchor:
-                                            AlignmentDirectional(0.0, 0.0)
-                                                .resolve(
-                                                    Directionality.of(context)),
-                                        followerAnchor:
-                                            AlignmentDirectional(0.0, 0.0)
-                                                .resolve(
-                                                    Directionality.of(context)),
                                         builder: (dialogContext) {
-                                          return Material(
-                                            color: Colors.transparent,
+                                          return Dialog(
+                                            insetPadding: EdgeInsets.zero,
+                                            backgroundColor: Colors.transparent,
+                                            alignment: AlignmentDirectional(
+                                                    0.0, 0.0)
+                                                .resolve(
+                                                    Directionality.of(context)),
                                             child: GestureDetector(
                                               onTap: () => _model.unfocusNode
                                                       .canRequestFocus
@@ -285,7 +282,7 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
                     color: FlutterFlowTheme.of(context).accent4,
                   ),
                   Align(
-                    alignment: AlignmentDirectional(-1.00, 0.00),
+                    alignment: AlignmentDirectional(-1.0, 0.0),
                     child: Padding(
                       padding:
                           EdgeInsetsDirectional.fromSTEB(20.0, 20.0, 0.0, 8.0),
@@ -304,7 +301,7 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
                     ),
                   ),
                   Align(
-                    alignment: AlignmentDirectional(-1.00, 0.00),
+                    alignment: AlignmentDirectional(-1.0, 0.0),
                     child: Padding(
                       padding:
                           EdgeInsetsDirectional.fromSTEB(28.0, 0.0, 20.0, 0.0),
@@ -350,13 +347,23 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
                         onPressed: () async {
                           logFirebaseEvent(
                               'D_CREWMATE_LIST_content_copy_ICN_ON_TAP');
+                          logFirebaseEvent('IconButton_copy_to_clipboard');
                           await Clipboard.setData(ClipboardData(
                               text: valueOrDefault(
                                   currentUserDocument?.crewId, '')));
+                          logFirebaseEvent('IconButton_show_snack_bar');
+                          ScaffoldMessenger.of(context).clearSnackBars();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'Code copied to clipboard!',
+                                valueOrDefault<String>(
+                                  (String appLanguage) {
+                                    return appLanguage == 'fr'
+                                        ? 'Code copié dans le presse-papier !'
+                                        : 'Code copied to clipboard!';
+                                  }(FFLocalizations.of(context).languageCode),
+                                  'Code copied to clipboard!',
+                                ),
                                 style: GoogleFonts.getFont(
                                   'Noto Sans',
                                   color: FlutterFlowTheme.of(context).primary,
@@ -374,7 +381,7 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
                     ],
                   ),
                   Align(
-                    alignment: AlignmentDirectional(-1.00, 0.00),
+                    alignment: AlignmentDirectional(-1.0, 0.0),
                     child: Padding(
                       padding:
                           EdgeInsetsDirectional.fromSTEB(28.0, 0.0, 20.0, 28.0),

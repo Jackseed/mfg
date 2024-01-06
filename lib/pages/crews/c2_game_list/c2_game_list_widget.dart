@@ -48,6 +48,7 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       logFirebaseEvent('C2_GAME_LIST_C2_GameList_ON_INIT_STATE');
       // Get deck
+      logFirebaseEvent('C2_GameList_Getdeck');
       _model.deck = await queryDecksRecordOnce(
         queryBuilder: (decksRecord) => decksRecord.where(
           'deckId',
@@ -56,12 +57,12 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
         singleRecord: true,
       ).then((s) => s.firstOrNull);
       // Get crewmate owner
+      logFirebaseEvent('C2_GameList_Getcrewmateowner');
       _model.crewmateOwner =
           await CrewmatesRecord.getDocumentOnce(_model.deck!.crewmateRef!);
       // Set filter as closed
-      setState(() {
-        _model.isDeckFilterOpen = false;
-      });
+      logFirebaseEvent('C2_GameList_Setfilterasclosed');
+      setState(() {});
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
@@ -127,6 +128,7 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
               floatingActionButton: FloatingActionButton.extended(
                 onPressed: () async {
                   logFirebaseEvent('C2_GAME_LIST_FloatingActionButton_0o5bg5');
+                  logFirebaseEvent('FloatingActionButton_navigate_to');
 
                   context.pushNamed(
                     'B2_AddMatchup',
@@ -201,11 +203,11 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
                         if (!snapshot.hasData) {
                           return Center(
                             child: SizedBox(
-                              width: 50.0,
-                              height: 50.0,
-                              child: SpinKitFadingFour(
-                                color: Color(0xFFE6486F),
-                                size: 50.0,
+                              width: 40.0,
+                              height: 40.0,
+                              child: SpinKitFoldingCube(
+                                color: FlutterFlowTheme.of(context).primary,
+                                size: 40.0,
                               ),
                             ),
                           );
@@ -225,7 +227,7 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
                           ),
                           child: Padding(
                             padding: EdgeInsetsDirectional.fromSTEB(
-                                0.0, 60.0, 0.0, 0.0),
+                                0.0, 60.0, 0.0, 20.0),
                             child: Builder(
                               builder: (context) {
                                 final gameDates = gameListGamesRecordList
@@ -263,7 +265,6 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
                                     .toList();
                                 return ListView.builder(
                                   padding: EdgeInsets.zero,
-                                  shrinkWrap: true,
                                   scrollDirection: Axis.vertical,
                                   itemCount: gameDates.length,
                                   itemBuilder: (context, gameDatesIndex) {
@@ -450,8 +451,7 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
                                                               ),
                                                               alignment:
                                                                   AlignmentDirectional(
-                                                                      0.00,
-                                                                      0.00),
+                                                                      0.0, 0.0),
                                                               child: Column(
                                                                 mainAxisSize:
                                                                     MainAxisSize
@@ -685,6 +685,7 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
                               onPressed: () async {
                                 logFirebaseEvent(
                                     'C2_GAME_LIST_PAGE_DECKS_BTN_ON_TAP');
+                                logFirebaseEvent('Button_update_page_state');
                                 setState(() {
                                   _model.isDeckFilterOpen =
                                       valueOrDefault<bool>(
@@ -725,8 +726,7 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
                             ),
                             if (_model.isDeckFilterOpen)
                               Padding(
-                                padding: EdgeInsetsDirectional.fromSTEB(
-                                    8.0, 8.0, 8.0, 8.0),
+                                padding: EdgeInsets.all(8.0),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: Color(0xFF645D5D),

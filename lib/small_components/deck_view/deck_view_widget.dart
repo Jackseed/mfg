@@ -5,8 +5,6 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/page_component/deck_edit/deck_edit_widget.dart';
 import '/custom_code/actions/index.dart' as actions;
-import 'package:aligned_dialog/aligned_dialog.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -45,9 +43,11 @@ class _DeckViewWidgetState extends State<DeckViewWidget> {
     // On component load action.
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       logFirebaseEvent('DECK_VIEW_COMP_DeckView_ON_INIT_STATE');
+      logFirebaseEvent('DeckView_custom_action');
       _model.deckScore = await actions.getDeckScore(
         widget.deck!.deckId,
       );
+      logFirebaseEvent('DeckView_update_component_state');
       setState(() {});
     });
 
@@ -93,12 +93,24 @@ class _DeckViewWidgetState extends State<DeckViewWidget> {
             logFirebaseEvent('DECK_VIEW_COMP_DeckCard_ON_TAP');
             if ((_model.deckScore?.wins == 0) &&
                 (_model.deckScore?.losses == 0)) {
+              logFirebaseEvent('DeckCard_show_snack_bar');
+              ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'No game yet',
-                    style: TextStyle(
+                    valueOrDefault<String>(
+                      (String appLanguage) {
+                        return appLanguage == 'fr'
+                            ? 'Aucune partie sauvegardée.'
+                            : 'No game yet.';
+                      }(FFLocalizations.of(context).languageCode),
+                      'No game yet.',
+                    ),
+                    style: GoogleFonts.getFont(
+                      'Noto Sans',
                       color: FlutterFlowTheme.of(context).primaryText,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16.0,
                     ),
                   ),
                   duration: Duration(milliseconds: 4000),
@@ -106,6 +118,8 @@ class _DeckViewWidgetState extends State<DeckViewWidget> {
                 ),
               );
             } else {
+              logFirebaseEvent('DeckCard_navigate_to');
+
               context.pushNamed(
                 'C2_GameList',
                 queryParameters: {
@@ -149,7 +163,7 @@ class _DeckViewWidgetState extends State<DeckViewWidget> {
                 ],
               ),
               child: Padding(
-                padding: EdgeInsetsDirectional.fromSTEB(8.0, 8.0, 8.0, 8.0),
+                padding: EdgeInsets.all(8.0),
                 child: Row(
                   mainAxisSize: MainAxisSize.max,
                   children: [
@@ -183,424 +197,409 @@ class _DeckViewWidgetState extends State<DeckViewWidget> {
                         ),
                       ),
                     ),
-                    Padding(
-                      padding:
-                          EdgeInsetsDirectional.fromSTEB(12.0, 0.0, 0.0, 0.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.max,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            valueOrDefault<String>(
-                              widget.deck?.name,
-                              'Deck name',
-                            ).maybeHandleOverflow(
-                              maxChars: 8,
-                              replacement: '…',
-                            ),
-                            style: FlutterFlowTheme.of(context)
-                                .titleLarge
-                                .override(
-                                  fontFamily: 'Cinzel Decorative',
-                                  fontSize: 24.0,
-                                  letterSpacing: 0.9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          Padding(
-                            padding: EdgeInsetsDirectional.fromSTEB(
-                                0.0, 4.0, 0.0, 4.0),
-                            child: FutureBuilder<CrewmatesRecord>(
-                              future: CrewmatesRecord.getDocumentOnce(
-                                  widget.deck!.crewmateRef!),
-                              builder: (context, snapshot) {
-                                // Customize what your widget looks like when it's loading.
-                                if (!snapshot.hasData) {
-                                  return Center(
-                                    child: SizedBox(
-                                      width: 50.0,
-                                      height: 50.0,
-                                      child: SpinKitFadingFour(
-                                        color: Color(0xFFE6486F),
-                                        size: 50.0,
-                                      ),
-                                    ),
-                                  );
-                                }
-                                final ownerCrewmatesRecord = snapshot.data!;
-                                return Text(
-                                  valueOrDefault<String>(
-                                    ownerCrewmatesRecord.name,
-                                    'Owner',
-                                  ),
-                                  style: FlutterFlowTheme.of(context)
-                                      .bodyLarge
-                                      .override(
-                                        fontFamily: 'Noto Sans',
-                                        fontSize: 18.0,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                );
-                              },
-                            ),
-                          ),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Padding(
-                                  padding: EdgeInsetsDirectional.fromSTEB(
-                                      0.0, 4.0, 0.0, 0.0),
-                                  child: Container(
-                                    width: 150.0,
-                                    height: 28.0,
-                                    decoration: BoxDecoration(),
-                                    child: Builder(
-                                      builder: (context) {
-                                        final colors =
-                                            widget.deck?.colors?.toList() ?? [];
-                                        return ListView.builder(
-                                          padding: EdgeInsets.zero,
-                                          shrinkWrap: true,
-                                          scrollDirection: Axis.horizontal,
-                                          itemCount: colors.length,
-                                          itemBuilder: (context, colorsIndex) {
-                                            final colorsItem =
-                                                colors[colorsIndex];
-                                            return Stack(
-                                              children: [
-                                                if (colorsItem == 'Black')
-                                                  Align(
-                                                    alignment:
-                                                        AlignmentDirectional(
-                                                            1.00, 1.00),
-                                                    child: Padding(
-                                                      padding:
-                                                          EdgeInsetsDirectional
-                                                              .fromSTEB(
-                                                                  0.0,
-                                                                  0.0,
-                                                                  4.0,
-                                                                  0.0),
-                                                      child:
-                                                          FlutterFlowIconButton(
-                                                        borderColor:
-                                                            Colors.transparent,
-                                                        borderRadius: 20.0,
-                                                        borderWidth: 1.0,
-                                                        buttonSize: 28.0,
-                                                        fillColor:
-                                                            Color(0xFF4A4A4A),
-                                                        icon: Icon(
-                                                          FFIcons.kblack,
-                                                          color: Colors.white,
-                                                          size: 13.0,
-                                                        ),
-                                                        onPressed: true
-                                                            ? null
-                                                            : () {
-                                                                print(
-                                                                    'Black pressed ...');
-                                                              },
-                                                      ),
-                                                    ),
-                                                  ),
-                                                if (colorsItem == 'White')
-                                                  Align(
-                                                    alignment:
-                                                        AlignmentDirectional(
-                                                            1.10, 1.00),
-                                                    child: Padding(
-                                                      padding:
-                                                          EdgeInsetsDirectional
-                                                              .fromSTEB(
-                                                                  0.0,
-                                                                  0.0,
-                                                                  4.0,
-                                                                  0.0),
-                                                      child:
-                                                          FlutterFlowIconButton(
-                                                        borderColor:
-                                                            Colors.transparent,
-                                                        borderRadius: 20.0,
-                                                        borderWidth: 1.0,
-                                                        buttonSize: 28.0,
-                                                        fillColor:
-                                                            Color(0xFFF3ECA0),
-                                                        icon: Icon(
-                                                          FFIcons.kwhite,
-                                                          color:
-                                                              Color(0xFF535353),
-                                                          size: 13.0,
-                                                        ),
-                                                        onPressed: true
-                                                            ? null
-                                                            : () {
-                                                                print(
-                                                                    'White pressed ...');
-                                                              },
-                                                      ),
-                                                    ),
-                                                  ),
-                                                if (colorsItem == 'Blue')
-                                                  Align(
-                                                    alignment:
-                                                        AlignmentDirectional(
-                                                            1.10, 1.00),
-                                                    child: Padding(
-                                                      padding:
-                                                          EdgeInsetsDirectional
-                                                              .fromSTEB(
-                                                                  0.0,
-                                                                  0.0,
-                                                                  4.0,
-                                                                  0.0),
-                                                      child:
-                                                          FlutterFlowIconButton(
-                                                        borderColor:
-                                                            Colors.transparent,
-                                                        borderRadius: 20.0,
-                                                        borderWidth: 1.0,
-                                                        buttonSize: 28.0,
-                                                        fillColor:
-                                                            Color(0xFF59A4E7),
-                                                        icon: Icon(
-                                                          FFIcons.kblue,
-                                                          color: Colors.white,
-                                                          size: 13.0,
-                                                        ),
-                                                        onPressed: true
-                                                            ? null
-                                                            : () {
-                                                                print(
-                                                                    'Blue pressed ...');
-                                                              },
-                                                      ),
-                                                    ),
-                                                  ),
-                                                if (colorsItem == 'Green')
-                                                  Align(
-                                                    alignment:
-                                                        AlignmentDirectional(
-                                                            1.10, 1.00),
-                                                    child: Padding(
-                                                      padding:
-                                                          EdgeInsetsDirectional
-                                                              .fromSTEB(
-                                                                  0.0,
-                                                                  0.0,
-                                                                  4.0,
-                                                                  0.0),
-                                                      child:
-                                                          FlutterFlowIconButton(
-                                                        borderColor:
-                                                            Colors.transparent,
-                                                        borderRadius: 20.0,
-                                                        borderWidth: 1.0,
-                                                        buttonSize: 28.0,
-                                                        fillColor:
-                                                            Color(0xFF7BBC60),
-                                                        icon: Icon(
-                                                          FFIcons.kgreen,
-                                                          color: Colors.white,
-                                                          size: 13.0,
-                                                        ),
-                                                        onPressed: true
-                                                            ? null
-                                                            : () {
-                                                                print(
-                                                                    'Green pressed ...');
-                                                              },
-                                                      ),
-                                                    ),
-                                                  ),
-                                                if (colorsItem == 'Red')
-                                                  Align(
-                                                    alignment:
-                                                        AlignmentDirectional(
-                                                            1.10, 1.00),
-                                                    child: Padding(
-                                                      padding:
-                                                          EdgeInsetsDirectional
-                                                              .fromSTEB(
-                                                                  0.0,
-                                                                  0.0,
-                                                                  4.0,
-                                                                  0.0),
-                                                      child:
-                                                          FlutterFlowIconButton(
-                                                        borderColor:
-                                                            Color(0x004B39EF),
-                                                        borderRadius: 20.0,
-                                                        borderWidth: 1.0,
-                                                        buttonSize: 28.0,
-                                                        fillColor:
-                                                            Color(0xFFFB8080),
-                                                        icon: Icon(
-                                                          FFIcons.kred,
-                                                          color: Colors.white,
-                                                          size: 13.0,
-                                                        ),
-                                                        onPressed: true
-                                                            ? null
-                                                            : () {
-                                                                print(
-                                                                    'Red pressed ...');
-                                                              },
-                                                      ),
-                                                    ),
-                                                  ),
-                                              ],
-                                            );
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     Expanded(
                       child: Padding(
                         padding:
-                            EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 6.0, 0.0),
+                            EdgeInsetsDirectional.fromSTEB(12.0, 0.0, 0.0, 0.0),
                         child: Column(
                           mainAxisSize: MainAxisSize.max,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Builder(
-                                  builder: (context) => FlutterFlowIconButton(
-                                    borderColor:
-                                        FlutterFlowTheme.of(context).primary,
-                                    borderRadius: 20.0,
-                                    borderWidth: 1.0,
-                                    buttonSize: 32.0,
-                                    fillColor:
-                                        FlutterFlowTheme.of(context).accent1,
-                                    icon: Icon(
-                                      Icons.edit_rounded,
-                                      color: FlutterFlowTheme.of(context)
-                                          .primaryText,
-                                      size: 16.0,
-                                    ),
-                                    onPressed: () async {
-                                      logFirebaseEvent(
-                                          'DECK_VIEW_COMP_Edit_ON_TAP');
-                                      await showAlignedDialog(
-                                        context: context,
-                                        isGlobal: true,
-                                        avoidOverflow: false,
-                                        targetAnchor:
-                                            AlignmentDirectional(0.0, 0.0)
-                                                .resolve(
-                                                    Directionality.of(context)),
-                                        followerAnchor:
-                                            AlignmentDirectional(0.0, 0.0)
-                                                .resolve(
-                                                    Directionality.of(context)),
-                                        builder: (dialogContext) {
-                                          return Material(
-                                            color: Colors.transparent,
-                                            child: DeckEditWidget(
-                                              title: FFLocalizations.of(context)
-                                                  .getText(
-                                                'x8wz0s6u' /* Edit a deck */,
-                                              ),
-                                              editedDeck: widget.deck!,
-                                            ),
-                                          );
-                                        },
-                                      ).then((value) => setState(() {}));
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
                             Expanded(
-                              child: Align(
-                                alignment: AlignmentDirectional(1.00, 1.00),
-                                child: RichText(
-                                  textScaleFactor:
-                                      MediaQuery.of(context).textScaleFactor,
-                                  text: TextSpan(
-                                    children: [
-                                      TextSpan(
-                                        text: valueOrDefault<String>(
-                                          _model.deckScore?.wins?.toString(),
-                                          '0',
-                                        ),
-                                        style: FlutterFlowTheme.of(context)
-                                            .bodyLarge
-                                            .override(
-                                              fontFamily: 'Noto Sans',
-                                              fontSize: 20.0,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                      ),
-                                      TextSpan(
-                                        text:
-                                            FFLocalizations.of(context).getText(
-                                          'u0i2ln3j' /*  -  */,
-                                        ),
-                                        style: FlutterFlowTheme.of(context)
-                                            .bodyLarge
-                                            .override(
-                                              fontFamily: 'Noto Sans',
-                                              fontSize: 20.0,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                      ),
-                                      TextSpan(
-                                        text: valueOrDefault<String>(
-                                          _model.deckScore?.losses?.toString(),
-                                          '0',
-                                        ),
-                                        style: FlutterFlowTheme.of(context)
-                                            .bodyLarge
-                                            .override(
-                                              fontFamily: 'Noto Sans',
-                                              fontSize: 20.0,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                      )
-                                    ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  Text(
+                                    valueOrDefault<String>(
+                                      widget.deck?.name,
+                                      'Deck name',
+                                    ).maybeHandleOverflow(
+                                      maxChars: 8,
+                                      replacement: '…',
+                                    ),
                                     style: FlutterFlowTheme.of(context)
-                                        .bodyLarge
+                                        .titleLarge
                                         .override(
-                                          fontFamily: 'Noto Sans',
-                                          fontSize: 20.0,
-                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'Cinzel Decorative',
+                                          fontSize: 24.0,
+                                          letterSpacing: 0.9,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                   ),
-                                ),
+                                  Expanded(
+                                    child: Align(
+                                      alignment: AlignmentDirectional(1.0, 0.0),
+                                      child: Builder(
+                                        builder: (context) =>
+                                            FlutterFlowIconButton(
+                                          borderColor:
+                                              FlutterFlowTheme.of(context)
+                                                  .primary,
+                                          borderRadius: 20.0,
+                                          borderWidth: 1.0,
+                                          buttonSize: 32.0,
+                                          fillColor:
+                                              FlutterFlowTheme.of(context)
+                                                  .accent1,
+                                          icon: Icon(
+                                            Icons.edit_rounded,
+                                            color: FlutterFlowTheme.of(context)
+                                                .primaryText,
+                                            size: 16.0,
+                                          ),
+                                          onPressed: () async {
+                                            logFirebaseEvent(
+                                                'DECK_VIEW_COMP_Edit_ON_TAP');
+                                            logFirebaseEvent(
+                                                'Edit_alert_dialog');
+                                            await showDialog(
+                                              context: context,
+                                              builder: (dialogContext) {
+                                                return Dialog(
+                                                  insetPadding: EdgeInsets.zero,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  alignment:
+                                                      AlignmentDirectional(
+                                                              0.0, 0.0)
+                                                          .resolve(
+                                                              Directionality.of(
+                                                                  context)),
+                                                  child: DeckEditWidget(
+                                                    title: FFLocalizations.of(
+                                                            context)
+                                                        .getText(
+                                                      'x8wz0s6u' /* Edit a deck */,
+                                                    ),
+                                                    editedDeck: widget.deck!,
+                                                  ),
+                                                );
+                                              },
+                                            ).then((value) => setState(() {}));
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            Flexible(
-                              child: Align(
-                                alignment: AlignmentDirectional(1.00, -1.00),
-                                child: SelectionArea(
-                                    child: Text(
-                                  valueOrDefault<String>(
-                                    formatNumber(
-                                      _model.deckScore?.winrate,
-                                      formatType: FormatType.percent,
-                                    ),
-                                    '0',
+                            Expanded(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  FutureBuilder<CrewmatesRecord>(
+                                    future: CrewmatesRecord.getDocumentOnce(
+                                        widget.deck!.crewmateRef!),
+                                    builder: (context, snapshot) {
+                                      // Customize what your widget looks like when it's loading.
+                                      if (!snapshot.hasData) {
+                                        return Center(
+                                          child: SizedBox(
+                                            width: 50.0,
+                                            height: 50.0,
+                                            child: SpinKitFadingFour(
+                                              color: Color(0xFFE6486F),
+                                              size: 50.0,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      final ownerCrewmatesRecord =
+                                          snapshot.data!;
+                                      return Text(
+                                        valueOrDefault<String>(
+                                          ownerCrewmatesRecord.name,
+                                          'Owner',
+                                        ),
+                                        style: FlutterFlowTheme.of(context)
+                                            .bodyLarge
+                                            .override(
+                                              fontFamily: 'Noto Sans',
+                                              fontSize: 22.0,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                      );
+                                    },
                                   ),
-                                  style:
-                                      FlutterFlowTheme.of(context).bodyMedium,
-                                )),
+                                  Expanded(
+                                    child: Align(
+                                      alignment: AlignmentDirectional(2.0, 0.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.max,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Align(
+                                            alignment:
+                                                AlignmentDirectional(1.0, -1.0),
+                                            child: SelectionArea(
+                                                child: Text(
+                                              (int wins, int losses) {
+                                                return '$wins - $losses';
+                                              }(
+                                                  valueOrDefault<int>(
+                                                    _model.deckScore?.wins,
+                                                    0,
+                                                  ),
+                                                  valueOrDefault<int>(
+                                                    _model.deckScore?.losses,
+                                                    0,
+                                                  )),
+                                              style:
+                                                  FlutterFlowTheme.of(context)
+                                                      .bodyMedium
+                                                      .override(
+                                                        fontFamily: 'Noto Sans',
+                                                        fontSize: 20.0,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                            )),
+                                          ),
+                                          Align(
+                                            alignment:
+                                                AlignmentDirectional(1.0, -1.0),
+                                            child: SelectionArea(
+                                                child: Text(
+                                              valueOrDefault<String>(
+                                                formatNumber(
+                                                  _model.deckScore?.winrate,
+                                                  formatType:
+                                                      FormatType.percent,
+                                                ),
+                                                '0',
+                                              ),
+                                              style:
+                                                  FlutterFlowTheme.of(context)
+                                                      .bodyMedium,
+                                            )),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Padding(
+                                    padding: EdgeInsetsDirectional.fromSTEB(
+                                        0.0, 4.0, 0.0, 0.0),
+                                    child: Container(
+                                      width: 165.0,
+                                      height: 28.0,
+                                      decoration: BoxDecoration(),
+                                      child: Builder(
+                                        builder: (context) {
+                                          final colors =
+                                              widget.deck?.colors?.toList() ??
+                                                  [];
+                                          return ListView.builder(
+                                            padding: EdgeInsets.zero,
+                                            scrollDirection: Axis.horizontal,
+                                            itemCount: colors.length,
+                                            itemBuilder:
+                                                (context, colorsIndex) {
+                                              final colorsItem =
+                                                  colors[colorsIndex];
+                                              return Stack(
+                                                children: [
+                                                  if (colorsItem == 'Black')
+                                                    Align(
+                                                      alignment:
+                                                          AlignmentDirectional(
+                                                              1.0, 1.0),
+                                                      child: Padding(
+                                                        padding:
+                                                            EdgeInsetsDirectional
+                                                                .fromSTEB(
+                                                                    0.0,
+                                                                    0.0,
+                                                                    4.0,
+                                                                    0.0),
+                                                        child:
+                                                            FlutterFlowIconButton(
+                                                          borderColor: Colors
+                                                              .transparent,
+                                                          borderRadius: 20.0,
+                                                          borderWidth: 1.0,
+                                                          buttonSize: 28.0,
+                                                          fillColor:
+                                                              Color(0xFF4A4A4A),
+                                                          icon: Icon(
+                                                            FFIcons.kblack,
+                                                            color: Colors.white,
+                                                            size: 13.0,
+                                                          ),
+                                                          onPressed: true
+                                                              ? null
+                                                              : () {
+                                                                  print(
+                                                                      'Black pressed ...');
+                                                                },
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  if (colorsItem == 'White')
+                                                    Align(
+                                                      alignment:
+                                                          AlignmentDirectional(
+                                                              1.1, 1.0),
+                                                      child: Padding(
+                                                        padding:
+                                                            EdgeInsetsDirectional
+                                                                .fromSTEB(
+                                                                    0.0,
+                                                                    0.0,
+                                                                    4.0,
+                                                                    0.0),
+                                                        child:
+                                                            FlutterFlowIconButton(
+                                                          borderColor: Colors
+                                                              .transparent,
+                                                          borderRadius: 20.0,
+                                                          borderWidth: 1.0,
+                                                          buttonSize: 28.0,
+                                                          fillColor:
+                                                              Color(0xFFF3ECA0),
+                                                          icon: Icon(
+                                                            FFIcons.kwhite,
+                                                            color: Color(
+                                                                0xFF535353),
+                                                            size: 13.0,
+                                                          ),
+                                                          onPressed: true
+                                                              ? null
+                                                              : () {
+                                                                  print(
+                                                                      'White pressed ...');
+                                                                },
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  if (colorsItem == 'Blue')
+                                                    Align(
+                                                      alignment:
+                                                          AlignmentDirectional(
+                                                              1.1, 1.0),
+                                                      child: Padding(
+                                                        padding:
+                                                            EdgeInsetsDirectional
+                                                                .fromSTEB(
+                                                                    0.0,
+                                                                    0.0,
+                                                                    4.0,
+                                                                    0.0),
+                                                        child:
+                                                            FlutterFlowIconButton(
+                                                          borderColor: Colors
+                                                              .transparent,
+                                                          borderRadius: 20.0,
+                                                          borderWidth: 1.0,
+                                                          buttonSize: 28.0,
+                                                          fillColor:
+                                                              Color(0xFF59A4E7),
+                                                          icon: Icon(
+                                                            FFIcons.kblue,
+                                                            color: Colors.white,
+                                                            size: 13.0,
+                                                          ),
+                                                          onPressed: true
+                                                              ? null
+                                                              : () {
+                                                                  print(
+                                                                      'Blue pressed ...');
+                                                                },
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  if (colorsItem == 'Green')
+                                                    Align(
+                                                      alignment:
+                                                          AlignmentDirectional(
+                                                              1.1, 1.0),
+                                                      child: Padding(
+                                                        padding:
+                                                            EdgeInsetsDirectional
+                                                                .fromSTEB(
+                                                                    0.0,
+                                                                    0.0,
+                                                                    4.0,
+                                                                    0.0),
+                                                        child:
+                                                            FlutterFlowIconButton(
+                                                          borderColor: Colors
+                                                              .transparent,
+                                                          borderRadius: 20.0,
+                                                          borderWidth: 1.0,
+                                                          buttonSize: 28.0,
+                                                          fillColor:
+                                                              Color(0xFF7BBC60),
+                                                          icon: Icon(
+                                                            FFIcons.kgreen,
+                                                            color: Colors.white,
+                                                            size: 13.0,
+                                                          ),
+                                                          onPressed: true
+                                                              ? null
+                                                              : () {
+                                                                  print(
+                                                                      'Green pressed ...');
+                                                                },
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  if (colorsItem == 'Red')
+                                                    Align(
+                                                      alignment:
+                                                          AlignmentDirectional(
+                                                              1.1, 1.0),
+                                                      child: Padding(
+                                                        padding:
+                                                            EdgeInsetsDirectional
+                                                                .fromSTEB(
+                                                                    0.0,
+                                                                    0.0,
+                                                                    4.0,
+                                                                    0.0),
+                                                        child:
+                                                            FlutterFlowIconButton(
+                                                          borderColor:
+                                                              Color(0x004B39EF),
+                                                          borderRadius: 20.0,
+                                                          borderWidth: 1.0,
+                                                          buttonSize: 28.0,
+                                                          fillColor:
+                                                              Color(0xFFFB8080),
+                                                          icon: Icon(
+                                                            FFIcons.kred,
+                                                            color: Colors.white,
+                                                            size: 13.0,
+                                                          ),
+                                                          onPressed: true
+                                                              ? null
+                                                              : () {
+                                                                  print(
+                                                                      'Red pressed ...');
+                                                                },
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

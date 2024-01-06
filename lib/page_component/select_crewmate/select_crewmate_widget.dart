@@ -9,7 +9,6 @@ import '/flutter_flow/form_field_controller.dart';
 import '/page_component/crewmate_form/crewmate_form_widget.dart';
 import '/small_components/dialog_title/dialog_title_widget.dart';
 import '/flutter_flow/custom_functions.dart' as functions;
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -105,7 +104,7 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                 ),
               ),
               Align(
-                alignment: AlignmentDirectional(-1.00, 0.00),
+                alignment: AlignmentDirectional(-1.0, 0.0),
                 child: Padding(
                   padding: EdgeInsetsDirectional.fromSTEB(20.0, 20.0, 0.0, 4.0),
                   child: Text(
@@ -121,7 +120,7 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                 ),
               ),
               Align(
-                alignment: AlignmentDirectional(-1.00, 0.00),
+                alignment: AlignmentDirectional(-1.0, 0.0),
                 child: Padding(
                   padding: EdgeInsetsDirectional.fromSTEB(20.0, 0.0, 0.0, 12.0),
                   child: Text(
@@ -142,7 +141,7 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                       .length >
                   0)
                 Align(
-                  alignment: AlignmentDirectional(-1.00, 0.00),
+                  alignment: AlignmentDirectional(-1.0, 0.0),
                   child: Padding(
                     padding:
                         EdgeInsetsDirectional.fromSTEB(20.0, 0.0, 0.0, 0.0),
@@ -181,7 +180,7 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                       .length ==
                   0)
                 Align(
-                  alignment: AlignmentDirectional(-1.00, 0.00),
+                  alignment: AlignmentDirectional(-1.0, 0.0),
                   child: Padding(
                     padding:
                         EdgeInsetsDirectional.fromSTEB(20.0, 20.0, 0.0, 4.0),
@@ -213,17 +212,15 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                     onTap: () async {
                       logFirebaseEvent(
                           'SELECT_CREWMATE_Container_1w00ccox_ON_TA');
-                      await showAlignedDialog(
+                      logFirebaseEvent('Container_alert_dialog');
+                      await showDialog(
                         context: context,
-                        isGlobal: true,
-                        avoidOverflow: false,
-                        targetAnchor: AlignmentDirectional(0.0, 0.0)
-                            .resolve(Directionality.of(context)),
-                        followerAnchor: AlignmentDirectional(0.0, 0.0)
-                            .resolve(Directionality.of(context)),
                         builder: (dialogContext) {
-                          return Material(
-                            color: Colors.transparent,
+                          return Dialog(
+                            insetPadding: EdgeInsets.zero,
+                            backgroundColor: Colors.transparent,
+                            alignment: AlignmentDirectional(0.0, 0.0)
+                                .resolve(Directionality.of(context)),
                             child: CrewmateFormWidget(
                               formTitle: FFLocalizations.of(context).getText(
                                 '019o280q' /* New Crewmate */,
@@ -255,7 +252,7 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                           ],
                           borderRadius: BorderRadius.circular(30.0),
                         ),
-                        alignment: AlignmentDirectional(0.00, 0.00),
+                        alignment: AlignmentDirectional(0.0, 0.0),
                         child: Row(
                           mainAxisSize: MainAxisSize.max,
                           mainAxisAlignment: MainAxisAlignment.start,
@@ -306,15 +303,16 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
               ),
               Flexible(
                 child: Align(
-                  alignment: AlignmentDirectional(0.00, 0.60),
+                  alignment: AlignmentDirectional(0.0, 0.6),
                   child: FFButtonWidget(
-                    onPressed: _model.radioButtonValue == null ||
-                            _model.radioButtonValue == ''
+                    onPressed: (_model.radioButtonValue == null ||
+                            _model.radioButtonValue == '')
                         ? null
                         : () async {
                             logFirebaseEvent(
                                 'SELECT_CREWMATE_ALL_GOOD!_BTN_ON_TAP');
                             // Get selected Crewmate
+                            logFirebaseEvent('Button_GetselectedCrewmate');
                             _model.selectedCrewmate =
                                 await queryCrewmatesRecordOnce(
                               parent: currentUserDocument?.crewRef,
@@ -331,12 +329,14 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                               singleRecord: true,
                             ).then((s) => s.firstOrNull);
                             // Update crewmate
+                            logFirebaseEvent('Button_Updatecrewmate');
 
                             await _model.selectedCrewmate!.reference
                                 .update(createCrewmatesRecordData(
                               userId: currentUserUid,
                             ));
                             // Update user
+                            logFirebaseEvent('Button_Updateuser');
 
                             await currentUserReference!
                                 .update(createUsersRecordData(
@@ -345,6 +345,7 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                               crewmateRef: _model.selectedCrewmate?.reference,
                             ));
                             // Get crewmate Decks
+                            logFirebaseEvent('Button_GetcrewmateDecks');
                             _model.crewmateDecks = await queryDecksRecordOnce(
                               queryBuilder: (decksRecord) => decksRecord.where(
                                 'crewmateId',
@@ -357,6 +358,8 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                               while (_model.loopCount <
                                   _model.crewmateDecks!.length) {
                                 // Update decks with userId
+                                logFirebaseEvent(
+                                    'Button_UpdatedeckswithuserId');
 
                                 await containerCrewmatesRecordList[
                                         _model.loopCount]
@@ -364,22 +367,36 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                                     .update(createCrewmatesRecordData(
                                       userId: currentUserUid,
                                     ));
+                                logFirebaseEvent(
+                                    'Button_update_component_state');
                                 setState(() {
                                   _model.loopCount = _model.loopCount + 1;
                                 });
                               }
                             }
+                            logFirebaseEvent(
+                                'Button_close_dialog,_drawer,_etc');
                             Navigator.pop(context);
+                            logFirebaseEvent(
+                                'Button_close_dialog,_drawer,_etc');
                             Navigator.pop(context);
                             // Added to crew!
+                            logFirebaseEvent('Button_Addedtocrew!');
+                            ScaffoldMessenger.of(context).clearSnackBars();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Added to crew! ',
+                                  valueOrDefault<String>(
+                                    FFLocalizations.of(context).getVariableText(
+                                      enText: 'Welcome to your Crew!',
+                                      frText: 'Bienvenue dans votre crew !',
+                                    ),
+                                    'Welcome to your Crew!',
+                                  ),
                                   style: GoogleFonts.getFont(
                                     'Noto Sans',
-                                    color: FlutterFlowTheme.of(context)
-                                        .primaryText,
+                                    color: FlutterFlowTheme.of(context).primary,
+                                    fontWeight: FontWeight.w500,
                                     fontSize: 16.0,
                                   ),
                                 ),
@@ -401,8 +418,7 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                     options: FFButtonOptions(
                       width: 280.0,
                       height: 56.0,
-                      padding:
-                          EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 0.0),
+                      padding: EdgeInsets.all(0.0),
                       iconPadding:
                           EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 4.0, 0.0),
                       color: FlutterFlowTheme.of(context).primary,

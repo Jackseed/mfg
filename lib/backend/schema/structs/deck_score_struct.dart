@@ -46,8 +46,9 @@ class DeckScoreStruct extends FFFirebaseStruct {
         losses: castToType<int>(data['losses']),
       );
 
-  static DeckScoreStruct? maybeFromMap(dynamic data) =>
-      data is Map<String, dynamic> ? DeckScoreStruct.fromMap(data) : null;
+  static DeckScoreStruct? maybeFromMap(dynamic data) => data is Map
+      ? DeckScoreStruct.fromMap(data.cast<String, dynamic>())
+      : null;
 
   Map<String, dynamic> toMap() => {
         'wins': _wins,

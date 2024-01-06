@@ -5,7 +5,6 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/form_field_controller.dart';
 import '/page_component/crewmate_form/crewmate_form_widget.dart';
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -126,17 +125,15 @@ class _CrewmateSelectWidgetState extends State<CrewmateSelectWidget> {
                 ),
                 onPressed: () async {
                   logFirebaseEvent('CREWMATE_SELECT_COMP_add_ICN_ON_TAP');
-                  await showAlignedDialog(
+                  logFirebaseEvent('IconButton_alert_dialog');
+                  await showDialog(
                     context: context,
-                    isGlobal: true,
-                    avoidOverflow: false,
-                    targetAnchor: AlignmentDirectional(0.0, 0.0)
-                        .resolve(Directionality.of(context)),
-                    followerAnchor: AlignmentDirectional(0.0, 0.0)
-                        .resolve(Directionality.of(context)),
                     builder: (dialogContext) {
-                      return Material(
-                        color: Colors.transparent,
+                      return Dialog(
+                        insetPadding: EdgeInsets.zero,
+                        backgroundColor: Colors.transparent,
+                        alignment: AlignmentDirectional(0.0, 0.0)
+                            .resolve(Directionality.of(context)),
                         child: CrewmateFormWidget(
                           formTitle: FFLocalizations.of(context).getText(
                             'xn2lrhzj' /* Add a Crewmate */,

@@ -6,8 +6,6 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/page_component/deck_edit/deck_edit_widget.dart';
 import '/custom_code/actions/index.dart' as actions;
 import 'deck_view_widget.dart' show DeckViewWidget;
-import 'package:aligned_dialog/aligned_dialog.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';

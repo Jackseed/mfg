@@ -58,10 +58,12 @@ class _PlayerFormWidgetState extends State<PlayerFormWidget> {
         if ((int deckNumber) {
           return deckNumber == 1 ? true : false;
         }(widget.deckNumber!)) {
+          logFirebaseEvent('PlayerForm_update_app_state');
           setState(() {
             FFAppState().deck1Selected = true;
           });
         } else {
+          logFirebaseEvent('PlayerForm_update_app_state');
           setState(() {
             FFAppState().deck2Selected = true;
           });
@@ -95,7 +97,7 @@ class _PlayerFormWidgetState extends State<PlayerFormWidget> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Align(
-              alignment: AlignmentDirectional(0.00, 1.00),
+              alignment: AlignmentDirectional(0.0, 1.0),
               child: Stack(
                 alignment: AlignmentDirectional(0.0, 0.0),
                 children: [
@@ -105,7 +107,7 @@ class _PlayerFormWidgetState extends State<PlayerFormWidget> {
                     fit: BoxFit.fitHeight,
                   ),
                   Align(
-                    alignment: AlignmentDirectional(0.00, 1.00),
+                    alignment: AlignmentDirectional(0.0, 1.0),
                     child: Text(
                       widget.formTitle,
                       textAlign: TextAlign.start,

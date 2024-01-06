@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'flutter_flow/request_manager.dart';
 import '/backend/backend.dart';
 import '/backend/schema/structs/index.dart';
 import 'backend/api_requests/api_manager.dart';
@@ -69,21 +68,6 @@ class FFAppState extends ChangeNotifier {
         ? prefs.setString('ff_currentGameDeckRef1', _value.path)
         : prefs.remove('ff_currentGameDeckRef1');
   }
-
-  final _avatarQueryManager = FutureRequestManager<List<ImagesRecord>>();
-  Future<List<ImagesRecord>> avatarQuery({
-    String? uniqueQueryKey,
-    bool? overrideCache,
-    required Future<List<ImagesRecord>> Function() requestFn,
-  }) =>
-      _avatarQueryManager.performRequest(
-        uniqueQueryKey: uniqueQueryKey,
-        overrideCache: overrideCache,
-        requestFn: requestFn,
-      );
-  void clearAvatarQueryCache() => _avatarQueryManager.clear();
-  void clearAvatarQueryCacheKey(String? uniqueKey) =>
-      _avatarQueryManager.clearRequest(uniqueKey);
 }
 
 LatLng? _latLngFromString(String? val) {

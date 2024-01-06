@@ -113,6 +113,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
       logFirebaseEvent('C_GAME_VIEW_C_GameView_ON_INIT_STATE');
       if (widget.isRanked!) {
         // Get Deck1
+        logFirebaseEvent('C_GameView_GetDeck1');
         _model.deck1 = await queryDecksRecordOnce(
           queryBuilder: (decksRecord) => decksRecord.where(
             'deckId',
@@ -121,6 +122,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
           singleRecord: true,
         ).then((s) => s.firstOrNull);
         // Get Deck2
+        logFirebaseEvent('C_GameView_GetDeck2');
         _model.deck2 = await queryDecksRecordOnce(
           queryBuilder: (decksRecord) => decksRecord.where(
             'deckId',
@@ -129,9 +131,11 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
           singleRecord: true,
         ).then((s) => s.firstOrNull);
         // Rebuild Component
+        logFirebaseEvent('C_GameView_RebuildComponent');
         setState(() {});
       } else {
         // Query all Avatars
+        logFirebaseEvent('C_GameView_QueryallAvatars');
         _model.images = await queryImagesRecordOnce(
           queryBuilder: (imagesRecord) => imagesRecord.where(
             'type',
@@ -139,6 +143,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
           ),
         );
         // Randomize Avatars 1 & 2
+        logFirebaseEvent('C_GameView_RandomizeAvatars1&2');
         _model.randomAvatar1 = valueOrDefault<int>(
           random_data.randomInteger(
               0,
@@ -154,6 +159,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
           0,
         );
         // Ensure different avatars
+        logFirebaseEvent('C_GameView_Ensuredifferentavatars');
         _model.randomAvatar1 = valueOrDefault<int>(
           (int randomAvatar1, int randomAvatar2) {
             return randomAvatar1 == randomAvatar2
@@ -165,6 +171,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
           0,
         );
         // Set avatar values
+        logFirebaseEvent('C_GameView_Setavatarvalues');
         setState(() {
           _model.avatar1 =
               _model.images![_model.randomAvatar1].image.first.downloadURL;
@@ -230,12 +237,15 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                     image: DecorationImage(
                       fit: BoxFit.cover,
                       image: Image.network(
-                        widget.isRanked!
-                            ? valueOrDefault<String>(
-                                _model.deck1?.avatarUrl,
-                                'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/magic-6zjv9f/assets/9e5l347v0vwn/output-onlinegiftools.gif',
-                              )
-                            : _model.avatar1,
+                        valueOrDefault<String>(
+                          widget.isRanked!
+                              ? valueOrDefault<String>(
+                                  _model.deck1?.avatarUrl,
+                                  'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/magic-6zjv9f/assets/9e5l347v0vwn/output-onlinegiftools.gif',
+                                )
+                              : _model.avatar1,
+                          'https://cards.scryfall.io/art_crop/front/8/3/833936c6-9381-4c0b-a81c-4a938be95040.jpg?1686968640',
+                        ),
                       ).image,
                     ),
                     gradient: LinearGradient(
@@ -254,7 +264,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                       children: [
                         if (_model.isPlayer1Victorious)
                           Align(
-                            alignment: AlignmentDirectional(1.00, 0.00),
+                            alignment: AlignmentDirectional(1.0, 0.0),
                             child: Container(
                               width: MediaQuery.sizeOf(context).width * 1.0,
                               height: MediaQuery.sizeOf(context).height * 0.5,
@@ -281,7 +291,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                     if (_model.isCounter1)
                                       Align(
                                         alignment:
-                                            AlignmentDirectional(0.00, 0.00),
+                                            AlignmentDirectional(0.0, 0.0),
                                         child: Padding(
                                           padding:
                                               EdgeInsetsDirectional.fromSTEB(
@@ -292,7 +302,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                             children: [
                                               Align(
                                                 alignment: AlignmentDirectional(
-                                                    0.00, 0.00),
+                                                    0.0, 0.0),
                                                 child: Row(
                                                   mainAxisSize:
                                                       MainAxisSize.min,
@@ -309,6 +319,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           onPressed: () async {
                                                             logFirebaseEvent(
                                                                 'C_GAME_VIEW_PAGE__BTN_ON_TAP');
+                                                            logFirebaseEvent(
+                                                                'Button_update_page_state');
                                                             setState(() {
                                                               _model.counter1 =
                                                                   _model.counter1 +
@@ -319,10 +331,14 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             });
                                                             if (!_model
                                                                 .isTimerCounter1Set) {
+                                                              logFirebaseEvent(
+                                                                  'Button_update_page_state');
                                                               setState(() {
                                                                 _model.isTimerCounter1Set =
                                                                     true;
                                                               });
+                                                              logFirebaseEvent(
+                                                                  'Button_start_periodic_action');
                                                               _model.minusTimerCounter1 =
                                                                   InstantTimer
                                                                       .periodic(
@@ -331,12 +347,16 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                         3000),
                                                                 callback:
                                                                     (timer) async {
+                                                                  logFirebaseEvent(
+                                                                      'Button_update_page_state');
                                                                   setState(() {
                                                                     _model.deltaCounter1 =
                                                                         0;
                                                                     _model.isTimerCounter1Set =
                                                                         false;
                                                                   });
+                                                                  logFirebaseEvent(
+                                                                      'Button_stop_periodic_action');
                                                                   _model
                                                                       .minusTimerCounter1
                                                                       ?.cancel();
@@ -359,12 +379,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             height:
                                                                 double.infinity,
                                                             padding:
-                                                                EdgeInsetsDirectional
-                                                                    .fromSTEB(
-                                                                        0.0,
-                                                                        0.0,
-                                                                        0.0,
-                                                                        0.0),
+                                                                EdgeInsets.all(
+                                                                    0.0),
                                                             iconPadding:
                                                                 EdgeInsetsDirectional
                                                                     .fromSTEB(
@@ -404,7 +420,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                       child: Align(
                                                         alignment:
                                                             AlignmentDirectional(
-                                                                0.00, 0.00),
+                                                                0.0, 0.0),
                                                         child: AutoSizeText(
                                                           _model.counter1
                                                               .toString(),
@@ -439,6 +455,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           onPressed: () async {
                                                             logFirebaseEvent(
                                                                 'C_GAME_VIEW_PAGE__BTN_ON_TAP');
+                                                            logFirebaseEvent(
+                                                                'Button_update_page_state');
                                                             setState(() {
                                                               _model.counter1 =
                                                                   _model.counter1 +
@@ -449,10 +467,14 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             });
                                                             if (!_model
                                                                 .isTimerCounter1Set) {
+                                                              logFirebaseEvent(
+                                                                  'Button_update_page_state');
                                                               setState(() {
                                                                 _model.isTimerCounter1Set =
                                                                     true;
                                                               });
+                                                              logFirebaseEvent(
+                                                                  'Button_start_periodic_action');
                                                               _model.plusTimerCounter1 =
                                                                   InstantTimer
                                                                       .periodic(
@@ -461,12 +483,16 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                         3000),
                                                                 callback:
                                                                     (timer) async {
+                                                                  logFirebaseEvent(
+                                                                      'Button_update_page_state');
                                                                   setState(() {
                                                                     _model.deltaCounter1 =
                                                                         0;
                                                                     _model.isTimerCounter1Set =
                                                                         false;
                                                                   });
+                                                                  logFirebaseEvent(
+                                                                      'Button_stop_periodic_action');
                                                                   _model
                                                                       .plusTimerCounter1
                                                                       ?.cancel();
@@ -488,12 +514,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             height:
                                                                 double.infinity,
                                                             padding:
-                                                                EdgeInsetsDirectional
-                                                                    .fromSTEB(
-                                                                        0.0,
-                                                                        0.0,
-                                                                        0.0,
-                                                                        0.0),
+                                                                EdgeInsets.all(
+                                                                    0.0),
                                                             iconPadding:
                                                                 EdgeInsetsDirectional
                                                                     .fromSTEB(
@@ -537,7 +559,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                 Align(
                                                   alignment:
                                                       AlignmentDirectional(
-                                                          0.00, 0.00),
+                                                          0.0, 0.0),
                                                   child: Padding(
                                                     padding:
                                                         EdgeInsetsDirectional
@@ -585,7 +607,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                     if (!_model.isCounter1)
                                       Align(
                                         alignment:
-                                            AlignmentDirectional(0.00, 0.00),
+                                            AlignmentDirectional(0.0, 0.0),
                                         child: Padding(
                                           padding:
                                               EdgeInsetsDirectional.fromSTEB(
@@ -596,7 +618,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                             children: [
                                               Align(
                                                 alignment: AlignmentDirectional(
-                                                    0.00, 0.00),
+                                                    0.0, 0.0),
                                                 child: Row(
                                                   mainAxisSize:
                                                       MainAxisSize.min,
@@ -616,6 +638,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           onPressed: () async {
                                                             logFirebaseEvent(
                                                                 'C_GAME_VIEW_PAGE__BTN_ON_TAP');
+                                                            logFirebaseEvent(
+                                                                'Button_update_page_state');
                                                             setState(() {
                                                               _model.startTime1 =
                                                                   getCurrentTimestamp;
@@ -633,6 +657,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                       .startTime1
                                                                       ?.millisecondsSinceEpoch !=
                                                                   null) {
+                                                                logFirebaseEvent(
+                                                                    'Button_wait__delay');
                                                                 await Future.delayed(
                                                                     const Duration(
                                                                         milliseconds:
@@ -644,6 +670,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     getCurrentTimestamp
                                                                         .millisecondsSinceEpoch) {
                                                                   // startTime = null & delta = 0
+                                                                  logFirebaseEvent(
+                                                                      'Button_startTime=null&delta=0');
                                                                   setState(() {
                                                                     _model.startTime1 =
                                                                         null;
@@ -668,12 +696,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             height:
                                                                 double.infinity,
                                                             padding:
-                                                                EdgeInsetsDirectional
-                                                                    .fromSTEB(
-                                                                        0.0,
-                                                                        0.0,
-                                                                        0.0,
-                                                                        0.0),
+                                                                EdgeInsets.all(
+                                                                    0.0),
                                                             iconPadding:
                                                                 EdgeInsetsDirectional
                                                                     .fromSTEB(
@@ -715,7 +739,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                       child: Align(
                                                         alignment:
                                                             AlignmentDirectional(
-                                                                0.00, 0.00),
+                                                                0.0, 0.0),
                                                         child: AutoSizeText(
                                                           _model.lifeCounter1
                                                               .toString(),
@@ -750,6 +774,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           onPressed: () async {
                                                             logFirebaseEvent(
                                                                 'C_GAME_VIEW_PAGE__BTN_ON_TAP');
+                                                            logFirebaseEvent(
+                                                                'Button_update_page_state');
                                                             setState(() {
                                                               _model.startTime1 =
                                                                   getCurrentTimestamp;
@@ -767,6 +793,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                       .startTime1
                                                                       ?.millisecondsSinceEpoch !=
                                                                   null) {
+                                                                logFirebaseEvent(
+                                                                    'Button_wait__delay');
                                                                 await Future.delayed(
                                                                     const Duration(
                                                                         milliseconds:
@@ -778,6 +806,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     getCurrentTimestamp
                                                                         .millisecondsSinceEpoch) {
                                                                   // startTime = null & delta = 0
+                                                                  logFirebaseEvent(
+                                                                      'Button_startTime=null&delta=0');
                                                                   setState(() {
                                                                     _model.startTime1 =
                                                                         null;
@@ -801,12 +831,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             height:
                                                                 double.infinity,
                                                             padding:
-                                                                EdgeInsetsDirectional
-                                                                    .fromSTEB(
-                                                                        0.0,
-                                                                        0.0,
-                                                                        0.0,
-                                                                        0.0),
+                                                                EdgeInsets.all(
+                                                                    0.0),
                                                             iconPadding:
                                                                 EdgeInsetsDirectional
                                                                     .fromSTEB(
@@ -852,7 +878,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                 Align(
                                                   alignment:
                                                       AlignmentDirectional(
-                                                          0.00, 0.00),
+                                                          0.0, 0.0),
                                                   child: Padding(
                                                     padding:
                                                         EdgeInsetsDirectional
@@ -938,10 +964,14 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                   onPressed: () async {
                                                     logFirebaseEvent(
                                                         'C_GAME_VIEW_PAGE_Eye_ON_TAP');
+                                                    logFirebaseEvent(
+                                                        'Eye_update_page_state');
                                                     setState(() {
                                                       _model.hasSettings1 =
                                                           false;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'Eye_widget_animation');
                                                     if (animationsMap[
                                                             'rowOnActionTriggerAnimation1'] !=
                                                         null) {
@@ -969,10 +999,14 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                   onPressed: () async {
                                                     logFirebaseEvent(
                                                         'C_GAME_VIEW_PAGE_EyeClosed_ON_TAP');
+                                                    logFirebaseEvent(
+                                                        'EyeClosed_update_page_state');
                                                     setState(() {
                                                       _model.hasSettings1 =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'EyeClosed_widget_animation');
                                                     if (animationsMap[
                                                             'rowOnActionTriggerAnimation1'] !=
                                                         null) {
@@ -1023,6 +1057,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                       onPressed: () async {
                                                         logFirebaseEvent(
                                                             'C_GAME_VIEW_PAGE_LifeButton_ON_TAP');
+                                                        logFirebaseEvent(
+                                                            'LifeButton_update_page_state');
                                                         setState(() {
                                                           _model.isCounter1 =
                                                               false;
@@ -1047,6 +1083,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                       onPressed: () async {
                                                         logFirebaseEvent(
                                                             'C_GAME_VIEW_PAGE_CounterButton_ON_TAP');
+                                                        logFirebaseEvent(
+                                                            'CounterButton_update_page_state');
                                                         setState(() {
                                                           _model.isCounter1 =
                                                               true;
@@ -1072,6 +1110,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                   onPressed: () async {
                                                     logFirebaseEvent(
                                                         'C_GAME_VIEW_PAGE_RandomButton_ON_TAP');
+                                                    logFirebaseEvent(
+                                                        'RandomButton_update_page_state');
                                                     setState(() {
                                                       _model.randomAvatar1 =
                                                           valueOrDefault<int>(
@@ -1087,6 +1127,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         0,
                                                       );
                                                     });
+                                                    logFirebaseEvent(
+                                                        'RandomButton_update_page_state');
                                                     setState(() {
                                                       _model.avatar1 = _model
                                                           .images!
@@ -1116,9 +1158,13 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                 onPressed: () async {
                                                   logFirebaseEvent(
                                                       'C_GAME_VIEW_PAGE_DiceButton_ON_TAP');
+                                                  logFirebaseEvent(
+                                                      'DiceButton_update_page_state');
                                                   setState(() {
                                                     _model.hasDice = true;
                                                   });
+                                                  logFirebaseEvent(
+                                                      'DiceButton_update_page_state');
                                                   setState(() {
                                                     _model.diceResult2 =
                                                         valueOrDefault<int>(
@@ -1133,17 +1179,24 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                       1,
                                                     );
                                                   });
+                                                  logFirebaseEvent(
+                                                      'DiceButton_start_periodic_action');
                                                   _model.diceTimer1 =
                                                       InstantTimer.periodic(
                                                     duration: Duration(
                                                         milliseconds: 500),
                                                     callback: (timer) async {
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
+
                                                       _model.dice11Controllers
                                                           .forEach(
                                                               (controller) {
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice12Controllers
                                                           .forEach(
@@ -1151,6 +1204,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice13Controllers
                                                           .forEach(
@@ -1158,6 +1213,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice14Controllers
                                                           .forEach(
@@ -1165,6 +1222,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice15Controllers
                                                           .forEach(
@@ -1172,6 +1231,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice16Controllers
                                                           .forEach(
@@ -1179,6 +1240,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice21Controllers
                                                           .forEach(
@@ -1186,6 +1249,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice22Controllers
                                                           .forEach(
@@ -1193,6 +1258,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice23Controllers
                                                           .forEach(
@@ -1200,6 +1267,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice24Controllers
                                                           .forEach(
@@ -1207,6 +1276,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice25Controllers
                                                           .forEach(
@@ -1214,6 +1285,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_rive_animation');
 
                                                       _model.dice26Controllers
                                                           .forEach(
@@ -1221,18 +1294,26 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         controller.reactivate =
                                                             true;
                                                       });
+                                                      logFirebaseEvent(
+                                                          'DiceButton_stop_periodic_action');
                                                       _model.diceTimer1
                                                           ?.cancel();
+                                                      logFirebaseEvent(
+                                                          'DiceButton_start_periodic_action');
                                                       _model.endDice1 =
                                                           InstantTimer.periodic(
                                                         duration: Duration(
                                                             milliseconds: 3000),
                                                         callback:
                                                             (timer) async {
+                                                          logFirebaseEvent(
+                                                              'DiceButton_update_page_state');
                                                           setState(() {
                                                             _model.hasDice =
                                                                 false;
                                                           });
+                                                          logFirebaseEvent(
+                                                              'DiceButton_stop_periodic_action');
                                                           _model.endDice1
                                                               ?.cancel();
                                                         },
@@ -1263,6 +1344,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                       onPressed: () async {
                                                         logFirebaseEvent(
                                                             'C_GAME_VIEW_PAGE_RestartButton_ON_TAP');
+                                                        logFirebaseEvent(
+                                                            'RestartButton_alert_dialog');
                                                         var confirmDialogResponse =
                                                             await showDialog<
                                                                     bool>(
@@ -1296,6 +1379,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 ) ??
                                                                 false;
                                                         if (confirmDialogResponse) {
+                                                          logFirebaseEvent(
+                                                              'RestartButton_update_page_state');
                                                           setState(() {
                                                             _model.lifeCounter1 =
                                                                 20;
@@ -1330,6 +1415,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         logFirebaseEvent(
                                                             'C_GAME_VIEW_PAGE_VictoryButton_ON_TAP');
                                                         // Did you win?
+                                                        logFirebaseEvent(
+                                                            'VictoryButton_Didyouwin?');
                                                         var confirmDialogResponse =
                                                             await showDialog<
                                                                     bool>(
@@ -1339,27 +1426,65 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                       (alertDialogContext) {
                                                                     return AlertDialog(
                                                                       title: Text(
-                                                                          'Victory'),
-                                                                      content: Text((String
-                                                                          deck1Name) {
-                                                                        return 'Save the game with $deck1Name as winner?';
-                                                                      }(_model
-                                                                          .deck1!
-                                                                          .name)),
+                                                                          valueOrDefault<
+                                                                              String>(
+                                                                        FFLocalizations.of(context)
+                                                                            .getVariableText(
+                                                                          enText:
+                                                                              'Victory',
+                                                                          frText:
+                                                                              'Victoire',
+                                                                        ),
+                                                                        'Victory',
+                                                                      )),
+                                                                      content: Text(
+                                                                          valueOrDefault<
+                                                                              String>(
+                                                                        FFLocalizations.of(context)
+                                                                            .getVariableText(
+                                                                          enText: (String
+                                                                              deck1Name) {
+                                                                            return 'Save the game with $deck1Name as winner?';
+                                                                          }(_model
+                                                                              .deck1!
+                                                                              .name),
+                                                                          frText:
+                                                                              valueOrDefault<String>(
+                                                                            (String
+                                                                                deck1Name) {
+                                                                              return 'Sauvegarder la partie avec $deck1Name comme vainqueur ?';
+                                                                            }(_model.deck1!.name),
+                                                                            'Sauvegarder la partie avec le joueur du bas comme vainqueur ?',
+                                                                          ),
+                                                                        ),
+                                                                        'Save the game with bottom player as winner?',
+                                                                      )),
                                                                       actions: [
                                                                         TextButton(
                                                                           onPressed: () => Navigator.pop(
                                                                               alertDialogContext,
                                                                               false),
                                                                           child:
-                                                                              Text('Cancel'),
+                                                                              Text(valueOrDefault<String>(
+                                                                            FFLocalizations.of(context).getVariableText(
+                                                                              enText: 'Cancel',
+                                                                              frText: 'Annuler',
+                                                                            ),
+                                                                            'Cancel',
+                                                                          )),
                                                                         ),
                                                                         TextButton(
                                                                           onPressed: () => Navigator.pop(
                                                                               alertDialogContext,
                                                                               true),
                                                                           child:
-                                                                              Text('Confirm'),
+                                                                              Text(valueOrDefault<String>(
+                                                                            FFLocalizations.of(context).getVariableText(
+                                                                              enText: 'Confirm',
+                                                                              frText: 'Confirmer',
+                                                                            ),
+                                                                            'Confirm',
+                                                                          )),
                                                                         ),
                                                                       ],
                                                                     );
@@ -1368,6 +1493,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 false;
                                                         if (confirmDialogResponse) {
                                                           // Create matchupid
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_Creatematchupid');
                                                           _model.matchupId =
                                                               await actions
                                                                   .createsMatchupid(
@@ -1379,12 +1506,16 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 .id,
                                                           );
                                                           // Check if today game exists
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_Checkiftodaygameexists');
                                                           _model.hasTodayGame =
                                                               await actions
                                                                   .checkIfTodayMatchupGameExists(
                                                             _model.matchupId!,
                                                           );
                                                           // Set Player1 Victorious
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_SetPlayer1Victorious');
                                                           setState(() {
                                                             _model.isPlayer1Victorious =
                                                                 true;
@@ -1392,6 +1523,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           if (_model
                                                               .hasTodayGame!) {
                                                             // Get today game
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_Gettodaygame');
                                                             _model.todayGameDoc =
                                                                 await queryGamesRecordOnce(
                                                               queryBuilder:
@@ -1412,6 +1545,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             ).then((s) => s
                                                                     .firstOrNull);
                                                             // Get player1 (victorious)
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_Getplayer1victorious');
                                                             _model.winnerPlayer =
                                                                 await queryPlayersRecordOnce(
                                                               parent: _model
@@ -1432,6 +1567,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             ).then((s) => s
                                                                     .firstOrNull);
                                                             // Update player1 score
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_Updateplayer1score');
 
                                                             await _model
                                                                 .winnerPlayer!
@@ -1445,6 +1582,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 },
                                                               ),
                                                             });
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_firestore_query');
                                                             _model.existingMatchupDocUpdateGame =
                                                                 await queryMatchupsRecordOnce(
                                                               queryBuilder:
@@ -1459,6 +1598,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   true,
                                                             ).then((s) => s
                                                                     .firstOrNull);
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_custom_action');
                                                             _model.newScoresUpdateGame =
                                                                 await actions
                                                                     .updateScores(
@@ -1475,6 +1616,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   .scores
                                                                   .toList(),
                                                             );
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_backend_call');
 
                                                             await _model
                                                                 .existingMatchupDocUpdateGame!
@@ -1492,6 +1635,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             });
                                                           } else {
                                                             // Create the game
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_Createthegame');
 
                                                             var gamesRecordReference =
                                                                 GamesRecord
@@ -1561,6 +1706,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             }, gamesRecordReference);
                                                             // Save player 1
                                                             // Create player1 (victorious)
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_Createplayer1victorious');
 
                                                             var playersRecordReference1 =
                                                                 PlayersRecord
@@ -1583,6 +1730,20 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                               crewId: _model
                                                                   .deck1
                                                                   ?.crewId,
+                                                              deckRef: functions
+                                                                  .fromDeckIdToRef(
+                                                                      _model
+                                                                          .deck1!
+                                                                          .reference
+                                                                          .id),
+                                                              crewmateRef: functions
+                                                                  .fromCrewmateIdToRef(
+                                                                      _model
+                                                                          .deck1!
+                                                                          .crewmateId,
+                                                                      _model
+                                                                          .deck1!
+                                                                          .crewId),
                                                             ));
                                                             _model.player1Doc =
                                                                 PlayersRecord
@@ -1603,10 +1764,19 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                           crewId: _model
                                                                               .deck1
                                                                               ?.crewId,
+                                                                          deckRef: functions.fromDeckIdToRef(_model
+                                                                              .deck1!
+                                                                              .reference
+                                                                              .id),
+                                                                          crewmateRef: functions.fromCrewmateIdToRef(
+                                                                              _model.deck1!.crewmateId,
+                                                                              _model.deck1!.crewId),
                                                                         ),
                                                                         playersRecordReference1);
                                                             // Save player2
                                                             // Create player2 (loser)
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_Createplayer2loser');
 
                                                             var playersRecordReference2 =
                                                                 PlayersRecord
@@ -1629,6 +1799,20 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                               crewId: _model
                                                                   .deck2
                                                                   ?.crewId,
+                                                              deckRef: functions
+                                                                  .fromDeckIdToRef(
+                                                                      _model
+                                                                          .deck2!
+                                                                          .reference
+                                                                          .id),
+                                                              crewmateRef: functions
+                                                                  .fromCrewmateIdToRef(
+                                                                      _model
+                                                                          .deck2!
+                                                                          .crewmateId,
+                                                                      _model
+                                                                          .deck2!
+                                                                          .crewId),
                                                             ));
                                                             _model.player2Doc =
                                                                 PlayersRecord
@@ -1649,8 +1833,17 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                           crewId: _model
                                                                               .deck2
                                                                               ?.crewId,
+                                                                          deckRef: functions.fromDeckIdToRef(_model
+                                                                              .deck2!
+                                                                              .reference
+                                                                              .id),
+                                                                          crewmateRef: functions.fromCrewmateIdToRef(
+                                                                              _model.deck2!.crewmateId,
+                                                                              _model.deck2!.crewId),
                                                                         ),
                                                                         playersRecordReference2);
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_custom_action');
                                                             _model.hasMatchup =
                                                                 await actions
                                                                     .checkIfMatchupExists(
@@ -1658,6 +1851,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             );
                                                             if (_model
                                                                 .hasMatchup!) {
+                                                              logFirebaseEvent(
+                                                                  'VictoryButton_firestore_query');
                                                               _model.existingMatchupDoc =
                                                                   await queryMatchupsRecordOnce(
                                                                 queryBuilder:
@@ -1672,6 +1867,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     true,
                                                               ).then((s) => s
                                                                       .firstOrNull);
+                                                              logFirebaseEvent(
+                                                                  'VictoryButton_custom_action');
                                                               _model.newScores =
                                                                   await actions
                                                                       .updateScores(
@@ -1688,6 +1885,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     .scores
                                                                     .toList(),
                                                               );
+                                                              logFirebaseEvent(
+                                                                  'VictoryButton_backend_call');
 
                                                               await _model
                                                                   .existingMatchupDoc!
@@ -1712,6 +1911,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 ),
                                                               });
                                                             } else {
+                                                              logFirebaseEvent(
+                                                                  'VictoryButton_custom_action');
                                                               _model.createdScores =
                                                                   await actions
                                                                       .createScores(
@@ -1724,6 +1925,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     .id,
                                                                 0,
                                                               );
+                                                              logFirebaseEvent(
+                                                                  'VictoryButton_backend_call');
 
                                                               await MatchupsRecord
                                                                   .collection
@@ -1771,6 +1974,9 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             }
                                                           }
 
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_rive_animation');
+
                                                           _model
                                                               .confettiPlayer1Controllers
                                                               .forEach(
@@ -1779,8 +1985,12 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     .reactivate =
                                                                 true;
                                                           });
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_haptic_feedback');
                                                           HapticFeedback
                                                               .vibrate();
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_alert_dialog');
                                                           confirmDialogResponse =
                                                               await showDialog<
                                                                       bool>(
@@ -1812,6 +2022,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   ) ??
                                                                   false;
                                                           if (confirmDialogResponse) {
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_update_page_state');
                                                             setState(() {
                                                               _model.lifeCounter1 =
                                                                   20;
@@ -1827,6 +2039,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   false;
                                                             });
                                                           } else {
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_update_app_state');
                                                             setState(() {
                                                               FFAppState()
                                                                       .deck1Selected =
@@ -1835,6 +2049,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                       .deck2Selected =
                                                                   false;
                                                             });
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_navigate_to');
 
                                                             context.pushNamed(
                                                                 'A_HomePage');
@@ -1848,7 +2064,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                               ),
                                               Align(
                                                 alignment: AlignmentDirectional(
-                                                    1.00, 0.00),
+                                                    1.0, 0.0),
                                                 child: FlutterFlowIconButton(
                                                   borderColor:
                                                       Colors.transparent,
@@ -1865,6 +2081,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                   onPressed: () async {
                                                     logFirebaseEvent(
                                                         'C_GAME_VIEW_PAGE_CancelButton_ON_TAP');
+                                                    logFirebaseEvent(
+                                                        'CancelButton_alert_dialog');
                                                     var confirmDialogResponse =
                                                         await showDialog<bool>(
                                                               context: context,
@@ -1896,6 +2114,9 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             ) ??
                                                             false;
                                                     if (confirmDialogResponse) {
+                                                      logFirebaseEvent(
+                                                          'CancelButton_navigate_to');
+
                                                       context.pushNamed(
                                                           'A_HomePage');
                                                     }
@@ -1921,7 +2142,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                         ),
                         if (_model.hasDice && (_model.diceResult1 == 1))
                           Align(
-                            alignment: AlignmentDirectional(0.00, 0.00),
+                            alignment: AlignmentDirectional(0.0, 0.0),
                             child: Container(
                               width: 250.0,
                               height: 250.0,
@@ -1935,7 +2156,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                           ),
                         if (_model.hasDice && (_model.diceResult1 == 2))
                           Align(
-                            alignment: AlignmentDirectional(0.00, 0.00),
+                            alignment: AlignmentDirectional(0.0, 0.0),
                             child: Container(
                               width: 250.0,
                               height: 250.0,
@@ -1949,7 +2170,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                           ),
                         if (_model.hasDice && (_model.diceResult1 == 3))
                           Align(
-                            alignment: AlignmentDirectional(0.00, 0.00),
+                            alignment: AlignmentDirectional(0.0, 0.0),
                             child: Container(
                               width: 250.0,
                               height: 250.0,
@@ -1963,7 +2184,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                           ),
                         if (_model.hasDice && (_model.diceResult1 == 4))
                           Align(
-                            alignment: AlignmentDirectional(0.00, 0.00),
+                            alignment: AlignmentDirectional(0.0, 0.0),
                             child: Container(
                               width: 250.0,
                               height: 250.0,
@@ -1977,7 +2198,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                           ),
                         if (_model.hasDice && (_model.diceResult1 == 5))
                           Align(
-                            alignment: AlignmentDirectional(0.00, 0.00),
+                            alignment: AlignmentDirectional(0.0, 0.0),
                             child: Container(
                               width: 250.0,
                               height: 250.0,
@@ -1991,7 +2212,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                           ),
                         if (_model.hasDice && (_model.diceResult1 == 6))
                           Align(
-                            alignment: AlignmentDirectional(0.00, 0.00),
+                            alignment: AlignmentDirectional(0.0, 0.0),
                             child: Container(
                               width: 250.0,
                               height: 250.0,
@@ -2042,7 +2263,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                         false,
                       ))
                         Align(
-                          alignment: AlignmentDirectional(1.00, 0.00),
+                          alignment: AlignmentDirectional(1.0, 0.0),
                           child: Container(
                             width: MediaQuery.sizeOf(context).width * 1.0,
                             height: MediaQuery.sizeOf(context).height * 0.5,
@@ -2068,8 +2289,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                 children: [
                                   if (_model.isCounter2)
                                     Align(
-                                      alignment:
-                                          AlignmentDirectional(0.00, 0.00),
+                                      alignment: AlignmentDirectional(0.0, 0.0),
                                       child: Padding(
                                         padding: EdgeInsetsDirectional.fromSTEB(
                                             0.0, 8.0, 0.0, 0.0),
@@ -2079,7 +2299,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                           children: [
                                             Align(
                                               alignment: AlignmentDirectional(
-                                                  0.00, 0.00),
+                                                  0.0, 0.0),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 mainAxisAlignment:
@@ -2095,6 +2315,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         onPressed: () async {
                                                           logFirebaseEvent(
                                                               'C_GAME_VIEW_PAGE__BTN_ON_TAP');
+                                                          logFirebaseEvent(
+                                                              'Button_update_page_state');
                                                           setState(() {
                                                             _model.counter2 =
                                                                 _model.counter2 +
@@ -2105,10 +2327,14 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           });
                                                           if (!_model
                                                               .isTimerCounter2Set) {
+                                                            logFirebaseEvent(
+                                                                'Button_update_page_state');
                                                             setState(() {
                                                               _model.isTimerCounter2Set =
                                                                   true;
                                                             });
+                                                            logFirebaseEvent(
+                                                                'Button_start_periodic_action');
                                                             _model.minusTimerCounter2 =
                                                                 InstantTimer
                                                                     .periodic(
@@ -2117,12 +2343,16 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                       3000),
                                                               callback:
                                                                   (timer) async {
+                                                                logFirebaseEvent(
+                                                                    'Button_update_page_state');
                                                                 setState(() {
                                                                   _model.deltaCounter2 =
                                                                       0;
                                                                   _model.isTimerCounter2Set =
                                                                       false;
                                                                 });
+                                                                logFirebaseEvent(
+                                                                    'Button_stop_periodic_action');
                                                                 _model
                                                                     .minusTimerCounter2
                                                                     ?.cancel();
@@ -2144,12 +2374,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           height:
                                                               double.infinity,
                                                           padding:
-                                                              EdgeInsetsDirectional
-                                                                  .fromSTEB(
-                                                                      0.0,
-                                                                      0.0,
-                                                                      0.0,
-                                                                      0.0),
+                                                              EdgeInsets.all(
+                                                                  0.0),
                                                           iconPadding:
                                                               EdgeInsetsDirectional
                                                                   .fromSTEB(
@@ -2189,7 +2415,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                     child: Align(
                                                       alignment:
                                                           AlignmentDirectional(
-                                                              0.00, 0.00),
+                                                              0.0, 0.0),
                                                       child: AutoSizeText(
                                                         _model.counter2
                                                             .toString(),
@@ -2223,6 +2449,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         onPressed: () async {
                                                           logFirebaseEvent(
                                                               'C_GAME_VIEW_PAGE__BTN_ON_TAP');
+                                                          logFirebaseEvent(
+                                                              'Button_update_page_state');
                                                           setState(() {
                                                             _model.counter2 =
                                                                 _model.counter2 +
@@ -2233,10 +2461,14 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           });
                                                           if (!_model
                                                               .isTimerCounter2Set) {
+                                                            logFirebaseEvent(
+                                                                'Button_update_page_state');
                                                             setState(() {
                                                               _model.isTimerCounter2Set =
                                                                   true;
                                                             });
+                                                            logFirebaseEvent(
+                                                                'Button_start_periodic_action');
                                                             _model.plusTimerCounter2 =
                                                                 InstantTimer
                                                                     .periodic(
@@ -2245,12 +2477,16 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                       3000),
                                                               callback:
                                                                   (timer) async {
+                                                                logFirebaseEvent(
+                                                                    'Button_update_page_state');
                                                                 setState(() {
                                                                   _model.deltaCounter2 =
                                                                       0;
                                                                   _model.isTimerCounter2Set =
                                                                       false;
                                                                 });
+                                                                logFirebaseEvent(
+                                                                    'Button_stop_periodic_action');
                                                                 _model
                                                                     .plusTimerCounter2
                                                                     ?.cancel();
@@ -2272,12 +2508,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           height:
                                                               double.infinity,
                                                           padding:
-                                                              EdgeInsetsDirectional
-                                                                  .fromSTEB(
-                                                                      0.0,
-                                                                      0.0,
-                                                                      0.0,
-                                                                      0.0),
+                                                              EdgeInsets.all(
+                                                                  0.0),
                                                           iconPadding:
                                                               EdgeInsetsDirectional
                                                                   .fromSTEB(
@@ -2320,7 +2552,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                             if (_model.isTimerCounter2Set)
                                               Align(
                                                 alignment: AlignmentDirectional(
-                                                    0.00, 0.00),
+                                                    0.0, 0.0),
                                                 child: Padding(
                                                   padding: EdgeInsetsDirectional
                                                       .fromSTEB(
@@ -2363,8 +2595,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                     ),
                                   if (!_model.isCounter2)
                                     Align(
-                                      alignment:
-                                          AlignmentDirectional(0.00, 0.00),
+                                      alignment: AlignmentDirectional(0.0, 0.0),
                                       child: Padding(
                                         padding: EdgeInsetsDirectional.fromSTEB(
                                             0.0, 8.0, 0.0, 0.0),
@@ -2374,7 +2605,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                           children: [
                                             Align(
                                               alignment: AlignmentDirectional(
-                                                  0.00, 0.00),
+                                                  0.0, 0.0),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 mainAxisAlignment:
@@ -2392,6 +2623,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         onPressed: () async {
                                                           logFirebaseEvent(
                                                               'C_GAME_VIEW_PAGE__BTN_ON_TAP');
+                                                          logFirebaseEvent(
+                                                              'Button_update_page_state');
                                                           setState(() {
                                                             _model.startTime2 =
                                                                 getCurrentTimestamp;
@@ -2409,6 +2642,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     .startTime2
                                                                     ?.millisecondsSinceEpoch !=
                                                                 null) {
+                                                              logFirebaseEvent(
+                                                                  'Button_wait__delay');
                                                               await Future.delayed(
                                                                   const Duration(
                                                                       milliseconds:
@@ -2420,6 +2655,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   getCurrentTimestamp
                                                                       .millisecondsSinceEpoch) {
                                                                 // startTime = null & delta = 0
+                                                                logFirebaseEvent(
+                                                                    'Button_startTime=null&delta=0');
                                                                 setState(() {
                                                                   _model.lifeCounterDelta2 =
                                                                       0;
@@ -2443,12 +2680,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           height:
                                                               double.infinity,
                                                           padding:
-                                                              EdgeInsetsDirectional
-                                                                  .fromSTEB(
-                                                                      0.0,
-                                                                      0.0,
-                                                                      0.0,
-                                                                      0.0),
+                                                              EdgeInsets.all(
+                                                                  0.0),
                                                           iconPadding:
                                                               EdgeInsetsDirectional
                                                                   .fromSTEB(
@@ -2490,10 +2723,13 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                     child: Align(
                                                       alignment:
                                                           AlignmentDirectional(
-                                                              0.00, 0.00),
+                                                              0.0, 0.0),
                                                       child: AutoSizeText(
-                                                        _model.lifeCounter2
-                                                            .toString(),
+                                                        valueOrDefault<String>(
+                                                          _model.lifeCounter2
+                                                              .toString(),
+                                                          '20',
+                                                        ),
                                                         textAlign:
                                                             TextAlign.center,
                                                         maxLines: 1,
@@ -2524,6 +2760,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                         onPressed: () async {
                                                           logFirebaseEvent(
                                                               'C_GAME_VIEW_PAGE__BTN_ON_TAP');
+                                                          logFirebaseEvent(
+                                                              'Button_update_page_state');
                                                           setState(() {
                                                             _model.startTime2 =
                                                                 getCurrentTimestamp;
@@ -2541,6 +2779,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     .startTime2
                                                                     ?.millisecondsSinceEpoch !=
                                                                 null) {
+                                                              logFirebaseEvent(
+                                                                  'Button_wait__delay');
                                                               await Future.delayed(
                                                                   const Duration(
                                                                       milliseconds:
@@ -2552,6 +2792,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   getCurrentTimestamp
                                                                       .millisecondsSinceEpoch) {
                                                                 // startTime = null & delta = 0
+                                                                logFirebaseEvent(
+                                                                    'Button_startTime=null&delta=0');
                                                                 setState(() {
                                                                   _model.lifeCounterDelta2 =
                                                                       0;
@@ -2575,12 +2817,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           height:
                                                               double.infinity,
                                                           padding:
-                                                              EdgeInsetsDirectional
-                                                                  .fromSTEB(
-                                                                      0.0,
-                                                                      0.0,
-                                                                      0.0,
-                                                                      0.0),
+                                                              EdgeInsets.all(
+                                                                  0.0),
                                                           iconPadding:
                                                               EdgeInsetsDirectional
                                                                   .fromSTEB(
@@ -2625,7 +2863,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                 null)
                                               Align(
                                                 alignment: AlignmentDirectional(
-                                                    0.00, 0.00),
+                                                    0.0, 0.0),
                                                 child: Padding(
                                                   padding: EdgeInsetsDirectional
                                                       .fromSTEB(
@@ -2692,7 +2930,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                             if (_model.hasSettings2)
                                               Align(
                                                 alignment: AlignmentDirectional(
-                                                    1.00, 0.00),
+                                                    1.0, 0.0),
                                                 child: FlutterFlowIconButton(
                                                   borderRadius: 20.0,
                                                   borderWidth: 1.0,
@@ -2708,10 +2946,14 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                   onPressed: () async {
                                                     logFirebaseEvent(
                                                         'C_GAME_VIEW_PAGE_Eye_ON_TAP');
+                                                    logFirebaseEvent(
+                                                        'Eye_update_page_state');
                                                     setState(() {
                                                       _model.hasSettings2 =
                                                           false;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'Eye_widget_animation');
                                                     if (animationsMap[
                                                             'rowOnActionTriggerAnimation2'] !=
                                                         null) {
@@ -2726,7 +2968,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                             if (!_model.hasSettings2)
                                               Align(
                                                 alignment: AlignmentDirectional(
-                                                    1.00, 0.00),
+                                                    1.0, 0.0),
                                                 child: FlutterFlowIconButton(
                                                   borderColor:
                                                       Colors.transparent,
@@ -2743,10 +2985,14 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                   onPressed: () async {
                                                     logFirebaseEvent(
                                                         'C_GAME_VIEW_PAGE_EyeClosed_ON_TAP');
+                                                    logFirebaseEvent(
+                                                        'EyeClosed_update_page_state');
                                                     setState(() {
                                                       _model.hasSettings2 =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'EyeClosed_widget_animation');
                                                     if (animationsMap[
                                                             'rowOnActionTriggerAnimation2'] !=
                                                         null) {
@@ -2798,6 +3044,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                     onPressed: () async {
                                                       logFirebaseEvent(
                                                           'C_GAME_VIEW_PAGE_LifeButton_ON_TAP');
+                                                      logFirebaseEvent(
+                                                          'LifeButton_update_page_state');
                                                       setState(() {
                                                         _model.isCounter2 =
                                                             false;
@@ -2822,6 +3070,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                     onPressed: () async {
                                                       logFirebaseEvent(
                                                           'C_GAME_VIEW_PAGE_CounterButton_ON_TAP');
+                                                      logFirebaseEvent(
+                                                          'CounterButton_update_page_state');
                                                       setState(() {
                                                         _model.isCounter2 =
                                                             true;
@@ -2846,6 +3096,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                 onPressed: () async {
                                                   logFirebaseEvent(
                                                       'C_GAME_VIEW_PAGE_RandomButton_ON_TAP');
+                                                  logFirebaseEvent(
+                                                      'RandomButton_update_page_state');
                                                   setState(() {
                                                     _model.randomAvatar2 =
                                                         valueOrDefault<int>(
@@ -2861,6 +3113,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                       0,
                                                     );
                                                   });
+                                                  logFirebaseEvent(
+                                                      'RandomButton_update_page_state');
                                                   setState(() {
                                                     _model.avatar2 = _model
                                                         .images!
@@ -2889,9 +3143,13 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                               onPressed: () async {
                                                 logFirebaseEvent(
                                                     'C_GAME_VIEW_PAGE_DiceButton_ON_TAP');
+                                                logFirebaseEvent(
+                                                    'DiceButton_update_page_state');
                                                 setState(() {
                                                   _model.hasDice = true;
                                                 });
+                                                logFirebaseEvent(
+                                                    'DiceButton_update_page_state');
                                                 setState(() {
                                                   _model.diceResult2 =
                                                       valueOrDefault<int>(
@@ -2906,92 +3164,127 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                     1,
                                                   );
                                                 });
+                                                logFirebaseEvent(
+                                                    'DiceButton_start_periodic_action');
                                                 _model.diceTimer2 =
                                                     InstantTimer.periodic(
                                                   duration: Duration(
                                                       milliseconds: 500),
                                                   callback: (timer) async {
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
+
                                                     _model.dice11Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice12Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice13Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice14Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice15Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice16Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice21Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice22Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice23Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice24Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice25Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_rive_animation');
 
                                                     _model.dice26Controllers
                                                         .forEach((controller) {
                                                       controller.reactivate =
                                                           true;
                                                     });
+                                                    logFirebaseEvent(
+                                                        'DiceButton_stop_periodic_action');
                                                     _model.diceTimer2?.cancel();
+                                                    logFirebaseEvent(
+                                                        'DiceButton_start_periodic_action');
                                                     _model.endDice2 =
                                                         InstantTimer.periodic(
                                                       duration: Duration(
                                                           milliseconds: 3000),
                                                       callback: (timer) async {
+                                                        logFirebaseEvent(
+                                                            'DiceButton_update_page_state');
                                                         setState(() {
                                                           _model.hasDice =
                                                               false;
                                                         });
+                                                        logFirebaseEvent(
+                                                            'DiceButton_stop_periodic_action');
                                                         _model.endDice2
                                                             ?.cancel();
                                                       },
@@ -3020,6 +3313,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                     onPressed: () async {
                                                       logFirebaseEvent(
                                                           'C_GAME_VIEW_PAGE_RestartButton_ON_TAP');
+                                                      logFirebaseEvent(
+                                                          'RestartButton_alert_dialog');
                                                       var confirmDialogResponse =
                                                           await showDialog<
                                                                   bool>(
@@ -3029,23 +3324,63 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     (alertDialogContext) {
                                                                   return AlertDialog(
                                                                     title: Text(
-                                                                        'Rematch?'),
+                                                                        valueOrDefault<
+                                                                            String>(
+                                                                      FFLocalizations.of(
+                                                                              context)
+                                                                          .getVariableText(
+                                                                        enText:
+                                                                            'Rematch?',
+                                                                        frText:
+                                                                            'Revanche ?',
+                                                                      ),
+                                                                      'Rematch?',
+                                                                    )),
                                                                     content: Text(
-                                                                        'Do you want to rematch?'),
+                                                                        valueOrDefault<
+                                                                            String>(
+                                                                      FFLocalizations.of(
+                                                                              context)
+                                                                          .getVariableText(
+                                                                        enText:
+                                                                            'Do you want to rematch?',
+                                                                        frText:
+                                                                            'Voulez-vous jouer la revanche ?',
+                                                                      ),
+                                                                      'Do you want to rematch?',
+                                                                    )),
                                                                     actions: [
                                                                       TextButton(
                                                                         onPressed: () => Navigator.pop(
                                                                             alertDialogContext,
                                                                             false),
                                                                         child: Text(
-                                                                            'Cancel'),
+                                                                            valueOrDefault<String>(
+                                                                          FFLocalizations.of(context)
+                                                                              .getVariableText(
+                                                                            enText:
+                                                                                'Cancel',
+                                                                            frText:
+                                                                                'Annuler',
+                                                                          ),
+                                                                          'Cancel',
+                                                                        )),
                                                                       ),
                                                                       TextButton(
                                                                         onPressed: () => Navigator.pop(
                                                                             alertDialogContext,
                                                                             true),
                                                                         child: Text(
-                                                                            'Confirm'),
+                                                                            valueOrDefault<String>(
+                                                                          FFLocalizations.of(context)
+                                                                              .getVariableText(
+                                                                            enText:
+                                                                                'Confirm',
+                                                                            frText:
+                                                                                'Confirmer',
+                                                                          ),
+                                                                          'Confirm',
+                                                                        )),
                                                                       ),
                                                                     ],
                                                                   );
@@ -3053,6 +3388,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                               ) ??
                                                               false;
                                                       if (confirmDialogResponse) {
+                                                        logFirebaseEvent(
+                                                            'RestartButton_update_page_state');
                                                         setState(() {
                                                           _model.lifeCounter1 =
                                                               20;
@@ -3086,6 +3423,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                     onPressed: () async {
                                                       logFirebaseEvent(
                                                           'C_GAME_VIEW_PAGE_VictoryButton_ON_TAP');
+                                                      logFirebaseEvent(
+                                                          'VictoryButton_alert_dialog');
                                                       var confirmDialogResponse =
                                                           await showDialog<
                                                                   bool>(
@@ -3095,27 +3434,75 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     (alertDialogContext) {
                                                                   return AlertDialog(
                                                                     title: Text(
-                                                                        'Victory'),
-                                                                    content: Text((String
-                                                                        deck2Name) {
-                                                                      return 'Save the game with $deck2Name as winner?';
-                                                                    }(_model
-                                                                        .deck2!
-                                                                        .name)),
+                                                                        valueOrDefault<
+                                                                            String>(
+                                                                      FFLocalizations.of(
+                                                                              context)
+                                                                          .getVariableText(
+                                                                        enText:
+                                                                            'Victory!',
+                                                                        frText:
+                                                                            'Victoire !',
+                                                                      ),
+                                                                      'Victory!',
+                                                                    )),
+                                                                    content: Text(
+                                                                        valueOrDefault<
+                                                                            String>(
+                                                                      FFLocalizations.of(
+                                                                              context)
+                                                                          .getVariableText(
+                                                                        enText: (String
+                                                                            deck2Name) {
+                                                                          return 'Save the game with $deck2Name as winner?';
+                                                                        }(_model
+                                                                            .deck2!
+                                                                            .name),
+                                                                        frText:
+                                                                            valueOrDefault<String>(
+                                                                          (String
+                                                                              deck2Name) {
+                                                                            return 'Sauvegarder la partie avec $deck2Name comme vainqueur ?';
+                                                                          }(_model
+                                                                              .deck2!
+                                                                              .name),
+                                                                          'Sauvegarder la partie avec le joueur du bas comme vainqueur ?',
+                                                                        ),
+                                                                      ),
+                                                                      'Save the game with bottom player as winner?',
+                                                                    )),
                                                                     actions: [
                                                                       TextButton(
                                                                         onPressed: () => Navigator.pop(
                                                                             alertDialogContext,
                                                                             false),
                                                                         child: Text(
-                                                                            'Cancel'),
+                                                                            valueOrDefault<String>(
+                                                                          FFLocalizations.of(context)
+                                                                              .getVariableText(
+                                                                            enText:
+                                                                                'Cancel',
+                                                                            frText:
+                                                                                'Annuler',
+                                                                          ),
+                                                                          'Cancel',
+                                                                        )),
                                                                       ),
                                                                       TextButton(
                                                                         onPressed: () => Navigator.pop(
                                                                             alertDialogContext,
                                                                             true),
                                                                         child: Text(
-                                                                            'Confirm'),
+                                                                            valueOrDefault<String>(
+                                                                          FFLocalizations.of(context)
+                                                                              .getVariableText(
+                                                                            enText:
+                                                                                'Confirm',
+                                                                            frText:
+                                                                                'Confirmer',
+                                                                          ),
+                                                                          'Confirm',
+                                                                        )),
                                                                       ),
                                                                     ],
                                                                   );
@@ -3123,6 +3510,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                               ) ??
                                                               false;
                                                       if (confirmDialogResponse) {
+                                                        logFirebaseEvent(
+                                                            'VictoryButton_custom_action');
                                                         _model.matchupId2 =
                                                             await actions
                                                                 .createsMatchupid(
@@ -3133,18 +3522,24 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                               .currentGameDeckRef2!
                                                               .id,
                                                         );
+                                                        logFirebaseEvent(
+                                                            'VictoryButton_custom_action');
                                                         _model.hasTodayGame2 =
                                                             await actions
                                                                 .checkIfTodayMatchupGameExists(
                                                           _model.matchupId2!,
                                                         );
                                                         // Set Player2 victorious
+                                                        logFirebaseEvent(
+                                                            'VictoryButton_SetPlayer2victorious');
                                                         setState(() {
                                                           _model.isPlayer2Victorious =
                                                               true;
                                                         });
                                                         if (_model
                                                             .hasTodayGame2!) {
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_firestore_query');
                                                           _model.todayGameDoc2 =
                                                               await queryGamesRecordOnce(
                                                             queryBuilder:
@@ -3163,6 +3558,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             singleRecord: true,
                                                           ).then((s) => s
                                                                   .firstOrNull);
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_firestore_query');
                                                           _model.winnerPlayer2 =
                                                               await queryPlayersRecordOnce(
                                                             parent: _model
@@ -3182,6 +3579,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           ).then((s) => s
                                                                   .firstOrNull);
                                                           // Update winner score
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_backend_call');
 
                                                           await _model
                                                               .winnerPlayer2!
@@ -3195,6 +3594,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                               },
                                                             ),
                                                           });
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_firestore_query');
                                                           _model.existingMatchupDocUpdateGame2 =
                                                               await queryMatchupsRecordOnce(
                                                             queryBuilder:
@@ -3208,6 +3609,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                             singleRecord: true,
                                                           ).then((s) => s
                                                                   .firstOrNull);
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_custom_action');
                                                           _model.newScoresUpdateGame2 =
                                                               await actions
                                                                   .updateScores(
@@ -3224,6 +3627,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 .scores
                                                                 .toList(),
                                                           );
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_backend_call');
 
                                                           await _model
                                                               .existingMatchupDocUpdateGame2!
@@ -3241,6 +3646,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           });
                                                         } else {
                                                           // Create the game
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_Createthegame');
 
                                                           var gamesRecordReference =
                                                               GamesRecord
@@ -3309,6 +3716,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           }, gamesRecordReference);
                                                           // Save player 1
                                                           // Create player1 (loser)
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_Createplayer1loser');
 
                                                           var playersRecordReference1 =
                                                               PlayersRecord
@@ -3328,28 +3737,53 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 ?.crewmateId,
                                                             crewId: _model
                                                                 .deck1?.crewId,
+                                                            deckRef: functions
+                                                                .fromDeckIdToRef(
+                                                                    _model
+                                                                        .deck1!
+                                                                        .reference
+                                                                        .id),
+                                                            crewmateRef: functions
+                                                                .fromCrewmateIdToRef(
+                                                                    _model
+                                                                        .deck1!
+                                                                        .crewmateId,
+                                                                    _model
+                                                                        .deck1!
+                                                                        .crewId),
                                                           ));
-                                                          _model.player1Doc2 = PlayersRecord
-                                                              .getDocumentFromData(
-                                                                  createPlayersRecordData(
-                                                                    score: 0,
-                                                                    deckName: _model
-                                                                        .deck1
-                                                                        ?.name,
-                                                                    deckId: _model
-                                                                        .deck1
-                                                                        ?.reference
-                                                                        .id,
-                                                                    crewmateId: _model
-                                                                        .deck1
-                                                                        ?.crewmateId,
-                                                                    crewId: _model
-                                                                        .deck1
-                                                                        ?.crewId,
-                                                                  ),
-                                                                  playersRecordReference1);
+                                                          _model.player1Doc2 =
+                                                              PlayersRecord
+                                                                  .getDocumentFromData(
+                                                                      createPlayersRecordData(
+                                                                        score:
+                                                                            0,
+                                                                        deckName: _model
+                                                                            .deck1
+                                                                            ?.name,
+                                                                        deckId: _model
+                                                                            .deck1
+                                                                            ?.reference
+                                                                            .id,
+                                                                        crewmateId: _model
+                                                                            .deck1
+                                                                            ?.crewmateId,
+                                                                        crewId: _model
+                                                                            .deck1
+                                                                            ?.crewId,
+                                                                        deckRef: functions.fromDeckIdToRef(_model
+                                                                            .deck1!
+                                                                            .reference
+                                                                            .id),
+                                                                        crewmateRef: functions.fromCrewmateIdToRef(
+                                                                            _model.deck1!.crewmateId,
+                                                                            _model.deck1!.crewId),
+                                                                      ),
+                                                                      playersRecordReference1);
                                                           // Save player2
                                                           // Create player2 (victorious)
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_Createplayer2victorious');
 
                                                           var playersRecordReference2 =
                                                               PlayersRecord
@@ -3369,26 +3803,51 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 ?.crewmateId,
                                                             crewId: _model
                                                                 .deck2?.crewId,
+                                                            deckRef: functions
+                                                                .fromDeckIdToRef(
+                                                                    _model
+                                                                        .deck2!
+                                                                        .reference
+                                                                        .id),
+                                                            crewmateRef: functions
+                                                                .fromCrewmateIdToRef(
+                                                                    _model
+                                                                        .deck2!
+                                                                        .crewmateId,
+                                                                    _model
+                                                                        .deck2!
+                                                                        .crewId),
                                                           ));
-                                                          _model.player2Doc2 = PlayersRecord
-                                                              .getDocumentFromData(
-                                                                  createPlayersRecordData(
-                                                                    score: 1,
-                                                                    deckName: _model
-                                                                        .deck2
-                                                                        ?.name,
-                                                                    deckId: _model
-                                                                        .deck2
-                                                                        ?.reference
-                                                                        .id,
-                                                                    crewmateId: _model
-                                                                        .deck2
-                                                                        ?.crewmateId,
-                                                                    crewId: _model
-                                                                        .deck2
-                                                                        ?.crewId,
-                                                                  ),
-                                                                  playersRecordReference2);
+                                                          _model.player2Doc2 =
+                                                              PlayersRecord
+                                                                  .getDocumentFromData(
+                                                                      createPlayersRecordData(
+                                                                        score:
+                                                                            1,
+                                                                        deckName: _model
+                                                                            .deck2
+                                                                            ?.name,
+                                                                        deckId: _model
+                                                                            .deck2
+                                                                            ?.reference
+                                                                            .id,
+                                                                        crewmateId: _model
+                                                                            .deck2
+                                                                            ?.crewmateId,
+                                                                        crewId: _model
+                                                                            .deck2
+                                                                            ?.crewId,
+                                                                        deckRef: functions.fromDeckIdToRef(_model
+                                                                            .deck2!
+                                                                            .reference
+                                                                            .id),
+                                                                        crewmateRef: functions.fromCrewmateIdToRef(
+                                                                            _model.deck2!.crewmateId,
+                                                                            _model.deck2!.crewId),
+                                                                      ),
+                                                                      playersRecordReference2);
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_custom_action');
                                                           _model.hasMatchup2 =
                                                               await actions
                                                                   .checkIfMatchupExists(
@@ -3396,6 +3855,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           );
                                                           if (_model
                                                               .hasMatchup2!) {
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_firestore_query');
                                                             _model.existingMatchupDoc2 =
                                                                 await queryMatchupsRecordOnce(
                                                               queryBuilder:
@@ -3410,6 +3871,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   true,
                                                             ).then((s) => s
                                                                     .firstOrNull);
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_custom_action');
                                                             _model.newScores2 =
                                                                 await actions
                                                                     .updateScores(
@@ -3426,6 +3889,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   .scores
                                                                   .toList(),
                                                             );
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_backend_call');
 
                                                             await _model
                                                                 .existingMatchupDoc2!
@@ -3450,6 +3915,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                               ),
                                                             });
                                                           } else {
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_custom_action');
                                                             _model.createdScores2 =
                                                                 await actions
                                                                     .createScores(
@@ -3462,6 +3929,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   .id,
                                                               1,
                                                             );
+                                                            logFirebaseEvent(
+                                                                'VictoryButton_backend_call');
 
                                                             await MatchupsRecord
                                                                 .collection
@@ -3509,6 +3978,9 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           }
                                                         }
 
+                                                        logFirebaseEvent(
+                                                            'VictoryButton_rive_animation');
+
                                                         _model
                                                             .confettiPlayer2Controllers
                                                             .forEach(
@@ -3517,8 +3989,12 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                   .reactivate =
                                                               true;
                                                         });
+                                                        logFirebaseEvent(
+                                                            'VictoryButton_haptic_feedback');
                                                         HapticFeedback
                                                             .vibrate();
+                                                        logFirebaseEvent(
+                                                            'VictoryButton_alert_dialog');
                                                         confirmDialogResponse =
                                                             await showDialog<
                                                                     bool>(
@@ -3528,23 +4004,55 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                       (alertDialogContext) {
                                                                     return AlertDialog(
                                                                       title: Text(
-                                                                          'Rematch?'),
+                                                                          valueOrDefault<
+                                                                              String>(
+                                                                        FFLocalizations.of(context)
+                                                                            .getVariableText(
+                                                                          enText:
+                                                                              'Rematch?',
+                                                                          frText:
+                                                                              'Revanche ?',
+                                                                        ),
+                                                                        'Rematch?',
+                                                                      )),
                                                                       content: Text(
-                                                                          'Do you want to rematch?'),
+                                                                          valueOrDefault<
+                                                                              String>(
+                                                                        FFLocalizations.of(context)
+                                                                            .getVariableText(
+                                                                          enText:
+                                                                              'Do you want to rematch?',
+                                                                          frText:
+                                                                              'Voulez-vous jouer la revanche ?',
+                                                                        ),
+                                                                        'Do you want to rematch?',
+                                                                      )),
                                                                       actions: [
                                                                         TextButton(
                                                                           onPressed: () => Navigator.pop(
                                                                               alertDialogContext,
                                                                               false),
                                                                           child:
-                                                                              Text('Cancel'),
+                                                                              Text(valueOrDefault<String>(
+                                                                            FFLocalizations.of(context).getVariableText(
+                                                                              enText: 'Cancel',
+                                                                              frText: 'Annuler',
+                                                                            ),
+                                                                            'Cancel',
+                                                                          )),
                                                                         ),
                                                                         TextButton(
                                                                           onPressed: () => Navigator.pop(
                                                                               alertDialogContext,
                                                                               true),
                                                                           child:
-                                                                              Text('Confirm'),
+                                                                              Text(valueOrDefault<String>(
+                                                                            FFLocalizations.of(context).getVariableText(
+                                                                              enText: 'Confirm',
+                                                                              frText: 'Confirmer',
+                                                                            ),
+                                                                            'Confirm',
+                                                                          )),
                                                                         ),
                                                                       ],
                                                                     );
@@ -3552,6 +4060,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 ) ??
                                                                 false;
                                                         if (confirmDialogResponse) {
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_update_page_state');
                                                           setState(() {
                                                             _model.lifeCounter1 =
                                                                 20;
@@ -3565,6 +4075,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 false;
                                                           });
                                                         } else {
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_update_app_state');
                                                           setState(() {
                                                             FFAppState()
                                                                     .deck1Selected =
@@ -3573,6 +4085,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                     .deck2Selected =
                                                                 false;
                                                           });
+                                                          logFirebaseEvent(
+                                                              'VictoryButton_navigate_to');
 
                                                           context.pushNamed(
                                                               'A_HomePage');
@@ -3586,7 +4100,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                             ),
                                             Align(
                                               alignment: AlignmentDirectional(
-                                                  1.00, 0.00),
+                                                  1.0, 0.0),
                                               child: FlutterFlowIconButton(
                                                 borderColor: Colors.transparent,
                                                 borderRadius: 20.0,
@@ -3602,6 +4116,8 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                 onPressed: () async {
                                                   logFirebaseEvent(
                                                       'C_GAME_VIEW_PAGE_CancelButton_ON_TAP');
+                                                  logFirebaseEvent(
+                                                      'CancelButton_alert_dialog');
                                                   var confirmDialogResponse =
                                                       await showDialog<bool>(
                                                             context: context,
@@ -3609,9 +4125,31 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                 (alertDialogContext) {
                                                               return AlertDialog(
                                                                 title: Text(
-                                                                    'Leave the game'),
+                                                                    valueOrDefault<
+                                                                        String>(
+                                                                  FFLocalizations.of(
+                                                                          context)
+                                                                      .getVariableText(
+                                                                    enText:
+                                                                        'Leave the game?',
+                                                                    frText:
+                                                                        'Quitter la partie ?',
+                                                                  ),
+                                                                  'Leave the game?',
+                                                                )),
                                                                 content: Text(
-                                                                    'Are you sure you want to leave the game?'),
+                                                                    valueOrDefault<
+                                                                        String>(
+                                                                  FFLocalizations.of(
+                                                                          context)
+                                                                      .getVariableText(
+                                                                    enText:
+                                                                        'Are you sure you want to leave the game?',
+                                                                    frText:
+                                                                        'Voulez-vous vraiment quitter la partie ?',
+                                                                  ),
+                                                                  'Are you sure you want to leave the game?',
+                                                                )),
                                                                 actions: [
                                                                   TextButton(
                                                                     onPressed: () =>
@@ -3619,7 +4157,18 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                             alertDialogContext,
                                                                             false),
                                                                     child: Text(
-                                                                        'Cancel'),
+                                                                        valueOrDefault<
+                                                                            String>(
+                                                                      FFLocalizations.of(
+                                                                              context)
+                                                                          .getVariableText(
+                                                                        enText:
+                                                                            'Cancel',
+                                                                        frText:
+                                                                            'Annuler',
+                                                                      ),
+                                                                      'Cancel',
+                                                                    )),
                                                                   ),
                                                                   TextButton(
                                                                     onPressed: () =>
@@ -3627,7 +4176,18 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                                             alertDialogContext,
                                                                             true),
                                                                     child: Text(
-                                                                        'Confirm'),
+                                                                        valueOrDefault<
+                                                                            String>(
+                                                                      FFLocalizations.of(
+                                                                              context)
+                                                                          .getVariableText(
+                                                                        enText:
+                                                                            'Confirm',
+                                                                        frText:
+                                                                            'Confirmer',
+                                                                      ),
+                                                                      'Confirm',
+                                                                    )),
                                                                   ),
                                                                 ],
                                                               );
@@ -3635,6 +4195,9 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                                                           ) ??
                                                           false;
                                                   if (confirmDialogResponse) {
+                                                    logFirebaseEvent(
+                                                        'CancelButton_navigate_to');
+
                                                     context.pushNamed(
                                                         'A_HomePage');
                                                   }
@@ -3660,7 +4223,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                       ),
                       if (_model.hasDice && (_model.diceResult2 == 1))
                         Align(
-                          alignment: AlignmentDirectional(0.00, 0.00),
+                          alignment: AlignmentDirectional(0.0, 0.0),
                           child: Container(
                             width: 250.0,
                             height: 250.0,
@@ -3674,7 +4237,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                         ),
                       if (_model.hasDice && (_model.diceResult2 == 2))
                         Align(
-                          alignment: AlignmentDirectional(0.00, 0.00),
+                          alignment: AlignmentDirectional(0.0, 0.0),
                           child: Container(
                             width: 250.0,
                             height: 250.0,
@@ -3688,7 +4251,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                         ),
                       if (_model.hasDice && (_model.diceResult2 == 3))
                         Align(
-                          alignment: AlignmentDirectional(0.00, 0.00),
+                          alignment: AlignmentDirectional(0.0, 0.0),
                           child: Container(
                             width: 250.0,
                             height: 250.0,
@@ -3702,7 +4265,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                         ),
                       if (_model.hasDice && (_model.diceResult2 == 4))
                         Align(
-                          alignment: AlignmentDirectional(0.00, 0.00),
+                          alignment: AlignmentDirectional(0.0, 0.0),
                           child: Container(
                             width: 250.0,
                             height: 250.0,
@@ -3716,7 +4279,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                         ),
                       if (_model.hasDice && (_model.diceResult2 == 5))
                         Align(
-                          alignment: AlignmentDirectional(0.00, 0.00),
+                          alignment: AlignmentDirectional(0.0, 0.0),
                           child: Container(
                             width: 250.0,
                             height: 250.0,
@@ -3730,7 +4293,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                         ),
                       if (_model.hasDice && (_model.diceResult2 == 6))
                         Align(
-                          alignment: AlignmentDirectional(0.00, 0.00),
+                          alignment: AlignmentDirectional(0.0, 0.0),
                           child: Container(
                             width: 250.0,
                             height: 250.0,

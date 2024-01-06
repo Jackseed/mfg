@@ -7,7 +7,6 @@ import '/flutter_flow/flutter_flow_widgets.dart';
 import '/page_component/select_crewmate/select_crewmate_widget.dart';
 import '/small_components/dialog_title/dialog_title_widget.dart';
 import 'join_crew_widget.dart' show JoinCrewWidget;
-import 'package:aligned_dialog/aligned_dialog.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';

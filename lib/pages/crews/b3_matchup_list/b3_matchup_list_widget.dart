@@ -44,6 +44,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
     // On page load action.
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       logFirebaseEvent('B3_MATCHUP_LIST_B3_MatchupList_ON_INIT_S');
+      logFirebaseEvent('B3_MatchupList_update_page_state');
       setState(() {
         _model.isDeckFilterOpen = false;
         _model.filteredDeckList = ['demigod'].toList().cast<String>();
@@ -113,6 +114,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
               floatingActionButton: FloatingActionButton.extended(
                 onPressed: () async {
                   logFirebaseEvent('B3_MATCHUP_LIST_FloatingActionButton_0c2');
+                  logFirebaseEvent('FloatingActionButton_navigate_to');
 
                   context.pushNamed('B2_AddMatchup');
                 },
@@ -199,7 +201,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
                         ),
                       ),
                       child: Column(
-                        mainAxisSize: MainAxisSize.max,
+                        mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           if (queryWrapperMatchupsRecordList.length > 0)
@@ -220,77 +222,101 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
                                       end: AlignmentDirectional(0, 1.0),
                                     ),
                                   ),
-                                  child: Padding(
-                                    padding: EdgeInsetsDirectional.fromSTEB(
-                                        0.0, 60.0, 0.0, 0.0),
-                                    child: SingleChildScrollView(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.max,
-                                        children: [
-                                          Padding(
-                                            padding:
-                                                EdgeInsetsDirectional.fromSTEB(
-                                                    0.0, 12.0, 0.0, 0.0),
-                                            child: Builder(
-                                              builder: (context) {
-                                                final matchups =
-                                                    queryWrapperMatchupsRecordList
-                                                        .toList();
-                                                return ListView.builder(
-                                                  padding: EdgeInsets.zero,
-                                                  primary: false,
-                                                  shrinkWrap: true,
-                                                  scrollDirection:
-                                                      Axis.vertical,
-                                                  itemCount: matchups.length,
-                                                  itemBuilder:
-                                                      (context, matchupsIndex) {
-                                                    final matchupsItem =
-                                                        matchups[matchupsIndex];
-                                                    return Padding(
-                                                      padding:
-                                                          EdgeInsetsDirectional
-                                                              .fromSTEB(
-                                                                  20.0,
-                                                                  0.0,
-                                                                  20.0,
-                                                                  20.0),
-                                                      child: InkWell(
-                                                        splashColor:
-                                                            Colors.transparent,
-                                                        focusColor:
-                                                            Colors.transparent,
-                                                        hoverColor:
-                                                            Colors.transparent,
-                                                        highlightColor:
-                                                            Colors.transparent,
-                                                        onTap: () async {
-                                                          logFirebaseEvent(
-                                                              'B3_MATCHUP_LIST_PAGE_GameItem_ON_TAP');
+                                  child: SingleChildScrollView(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.max,
+                                      children: [
+                                        Builder(
+                                          builder: (context) {
+                                            final matchups =
+                                                queryWrapperMatchupsRecordList
+                                                    .toList();
+                                            return ListView.separated(
+                                              padding: EdgeInsets.fromLTRB(
+                                                0,
+                                                72.0,
+                                                0,
+                                                110.0,
+                                              ),
+                                              primary: false,
+                                              shrinkWrap: true,
+                                              scrollDirection: Axis.vertical,
+                                              itemCount: matchups.length,
+                                              separatorBuilder: (_, __) =>
+                                                  SizedBox(height: 20.0),
+                                              itemBuilder:
+                                                  (context, matchupsIndex) {
+                                                final matchupsItem =
+                                                    matchups[matchupsIndex];
+                                                return Padding(
+                                                  padding: EdgeInsetsDirectional
+                                                      .fromSTEB(
+                                                          20.0, 0.0, 20.0, 0.0),
+                                                  child: InkWell(
+                                                    splashColor:
+                                                        Colors.transparent,
+                                                    focusColor:
+                                                        Colors.transparent,
+                                                    hoverColor:
+                                                        Colors.transparent,
+                                                    highlightColor:
+                                                        Colors.transparent,
+                                                    onTap: () async {
+                                                      logFirebaseEvent(
+                                                          'B3_MATCHUP_LIST_PAGE_GameItem_ON_TAP');
+                                                      logFirebaseEvent(
+                                                          'GameItem_navigate_to');
 
-                                                          context.pushNamed(
-                                                            'B4_MatchupView',
-                                                            queryParameters: {
-                                                              'matchupId':
-                                                                  serializeParam(
-                                                                matchupsItem
-                                                                    .matchupId,
-                                                                ParamType
-                                                                    .String,
-                                                              ),
-                                                            }.withoutNulls,
-                                                          );
-                                                        },
+                                                      context.pushNamed(
+                                                        'B4_MatchupView',
+                                                        queryParameters: {
+                                                          'matchupId':
+                                                              serializeParam(
+                                                            matchupsItem
+                                                                .matchupId,
+                                                            ParamType.String,
+                                                          ),
+                                                        }.withoutNulls,
+                                                      );
+                                                    },
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            blurRadius: 3.0,
+                                                            color: Color(
+                                                                0x411D2429),
+                                                            offset: Offset(
+                                                                0.0, 1.0),
+                                                          )
+                                                        ],
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(30.0),
+                                                      ),
+                                                      child: Material(
+                                                        color:
+                                                            Colors.transparent,
+                                                        elevation: 1.0,
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      30.0),
+                                                        ),
                                                         child: Container(
                                                           decoration:
                                                               BoxDecoration(
+                                                            color: Colors
+                                                                .transparent,
                                                             boxShadow: [
                                                               BoxShadow(
-                                                                blurRadius: 3.0,
+                                                                blurRadius: 4.0,
                                                                 color: Color(
-                                                                    0x411D2429),
+                                                                    0x00323236),
                                                                 offset: Offset(
-                                                                    0.0, 1.0),
+                                                                    0.0, 2.0),
                                                               )
                                                             ],
                                                             borderRadius:
@@ -298,250 +324,236 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
                                                                     .circular(
                                                                         30.0),
                                                           ),
-                                                          child: Material(
-                                                            color: Colors
-                                                                .transparent,
-                                                            elevation: 1.0,
-                                                            shape:
-                                                                RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          30.0),
-                                                            ),
-                                                            child: Container(
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: Colors
-                                                                    .transparent,
-                                                                boxShadow: [
-                                                                  BoxShadow(
-                                                                    blurRadius:
-                                                                        4.0,
-                                                                    color: Color(
-                                                                        0x00323236),
-                                                                    offset:
-                                                                        Offset(
-                                                                            0.0,
-                                                                            2.0),
-                                                                  )
-                                                                ],
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            30.0),
-                                                              ),
-                                                              alignment:
-                                                                  AlignmentDirectional(
-                                                                      0.00,
-                                                                      0.00),
-                                                              child: Column(
+                                                          alignment:
+                                                              AlignmentDirectional(
+                                                                  0.0, 0.0),
+                                                          child: Column(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .max,
+                                                            children: [
+                                                              Row(
                                                                 mainAxisSize:
                                                                     MainAxisSize
                                                                         .max,
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .start,
                                                                 children: [
-                                                                  Row(
-                                                                    mainAxisSize:
-                                                                        MainAxisSize
-                                                                            .max,
-                                                                    mainAxisAlignment:
-                                                                        MainAxisAlignment
-                                                                            .start,
-                                                                    children: [
-                                                                      Padding(
-                                                                        padding: EdgeInsetsDirectional.fromSTEB(
+                                                                  Padding(
+                                                                    padding: EdgeInsetsDirectional
+                                                                        .fromSTEB(
                                                                             8.0,
                                                                             0.0,
                                                                             0.0,
                                                                             0.0),
-                                                                        child: FutureBuilder<
-                                                                            DecksRecord>(
-                                                                          future: DecksRecord.getDocumentOnce(matchupsItem
-                                                                              .scores
-                                                                              .first
-                                                                              .deckRef!),
-                                                                          builder:
-                                                                              (context, snapshot) {
-                                                                            // Customize what your widget looks like when it's loading.
-                                                                            if (!snapshot.hasData) {
-                                                                              return Center(
-                                                                                child: SizedBox(
-                                                                                  width: 50.0,
-                                                                                  height: 50.0,
-                                                                                  child: SpinKitFadingFour(
-                                                                                    color: Color(0xFFE6486F),
-                                                                                    size: 50.0,
-                                                                                  ),
-                                                                                ),
-                                                                              );
-                                                                            }
-                                                                            final player1DecksRecord =
-                                                                                snapshot.data!;
-                                                                            return Container(
-                                                                              width: MediaQuery.sizeOf(context).width * 0.4,
-                                                                              height: MediaQuery.sizeOf(context).height * 0.2,
-                                                                              decoration: BoxDecoration(),
-                                                                              child: Column(
-                                                                                mainAxisSize: MainAxisSize.max,
-                                                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                                                crossAxisAlignment: CrossAxisAlignment.center,
-                                                                                children: [
-                                                                                  Padding(
-                                                                                    padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 8.0),
-                                                                                    child: AutoSizeText(
-                                                                                      player1DecksRecord.name,
-                                                                                      maxLines: 1,
-                                                                                      style: FlutterFlowTheme.of(context).titleLarge.override(
-                                                                                            fontFamily: 'Cinzel Decorative',
-                                                                                            fontSize: 30.0,
-                                                                                            lineHeight: 0.8,
-                                                                                          ),
-                                                                                    ),
-                                                                                  ),
-                                                                                  Padding(
-                                                                                    padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
-                                                                                    child: Row(
-                                                                                      mainAxisSize: MainAxisSize.max,
-                                                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                                                      children: [
-                                                                                        Container(
-                                                                                          width: MediaQuery.sizeOf(context).width * 0.15,
-                                                                                          height: MediaQuery.sizeOf(context).width * 0.15,
-                                                                                          clipBehavior: Clip.antiAlias,
-                                                                                          decoration: BoxDecoration(
-                                                                                            shape: BoxShape.circle,
-                                                                                          ),
-                                                                                          child: CachedNetworkImage(
-                                                                                            fadeInDuration: Duration(milliseconds: 500),
-                                                                                            fadeOutDuration: Duration(milliseconds: 500),
-                                                                                            imageUrl: player1DecksRecord.avatarUrl,
-                                                                                            fit: BoxFit.cover,
-                                                                                          ),
-                                                                                        ),
-                                                                                        Padding(
-                                                                                          padding: EdgeInsetsDirectional.fromSTEB(12.0, 0.0, 0.0, 0.0),
-                                                                                          child: Text(
-                                                                                            matchupsItem.scores.first.score.toString(),
-                                                                                            style: FlutterFlowTheme.of(context).bodyMedium.override(
-                                                                                                  fontFamily: 'Noto Sans',
-                                                                                                  fontSize: 32.0,
-                                                                                                ),
-                                                                                          ),
-                                                                                        ),
-                                                                                      ],
-                                                                                    ),
-                                                                                  ),
-                                                                                ],
+                                                                    child: FutureBuilder<
+                                                                        DecksRecord>(
+                                                                      future: DecksRecord.getDocumentOnce(matchupsItem
+                                                                          .scores
+                                                                          .first
+                                                                          .deckRef!),
+                                                                      builder:
+                                                                          (context,
+                                                                              snapshot) {
+                                                                        // Customize what your widget looks like when it's loading.
+                                                                        if (!snapshot
+                                                                            .hasData) {
+                                                                          return Center(
+                                                                            child:
+                                                                                SizedBox(
+                                                                              width: 50.0,
+                                                                              height: 50.0,
+                                                                              child: SpinKitFadingFour(
+                                                                                color: Color(0xFFE6486F),
+                                                                                size: 50.0,
                                                                               ),
-                                                                            );
-                                                                          },
-                                                                        ),
-                                                                      ),
-                                                                      Padding(
-                                                                        padding: EdgeInsetsDirectional.fromSTEB(
+                                                                            ),
+                                                                          );
+                                                                        }
+                                                                        final player1DecksRecord =
+                                                                            snapshot.data!;
+                                                                        return Container(
+                                                                          width:
+                                                                              MediaQuery.sizeOf(context).width * 0.4,
+                                                                          height:
+                                                                              MediaQuery.sizeOf(context).height * 0.2,
+                                                                          decoration:
+                                                                              BoxDecoration(),
+                                                                          child:
+                                                                              Column(
+                                                                            mainAxisSize:
+                                                                                MainAxisSize.max,
+                                                                            mainAxisAlignment:
+                                                                                MainAxisAlignment.center,
+                                                                            crossAxisAlignment:
+                                                                                CrossAxisAlignment.center,
+                                                                            children: [
+                                                                              Padding(
+                                                                                padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 8.0),
+                                                                                child: AutoSizeText(
+                                                                                  player1DecksRecord.name,
+                                                                                  maxLines: 1,
+                                                                                  style: FlutterFlowTheme.of(context).titleLarge.override(
+                                                                                        fontFamily: 'Cinzel Decorative',
+                                                                                        fontSize: 30.0,
+                                                                                        lineHeight: 0.8,
+                                                                                      ),
+                                                                                ),
+                                                                              ),
+                                                                              Padding(
+                                                                                padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
+                                                                                child: Row(
+                                                                                  mainAxisSize: MainAxisSize.max,
+                                                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                                                  children: [
+                                                                                    Container(
+                                                                                      width: MediaQuery.sizeOf(context).width * 0.15,
+                                                                                      height: MediaQuery.sizeOf(context).width * 0.15,
+                                                                                      clipBehavior: Clip.antiAlias,
+                                                                                      decoration: BoxDecoration(
+                                                                                        shape: BoxShape.circle,
+                                                                                      ),
+                                                                                      child: CachedNetworkImage(
+                                                                                        fadeInDuration: Duration(milliseconds: 500),
+                                                                                        fadeOutDuration: Duration(milliseconds: 500),
+                                                                                        imageUrl: player1DecksRecord.avatarUrl,
+                                                                                        fit: BoxFit.cover,
+                                                                                      ),
+                                                                                    ),
+                                                                                    Padding(
+                                                                                      padding: EdgeInsetsDirectional.fromSTEB(12.0, 0.0, 0.0, 0.0),
+                                                                                      child: Text(
+                                                                                        matchupsItem.scores.first.score.toString(),
+                                                                                        style: FlutterFlowTheme.of(context).bodyMedium.override(
+                                                                                              fontFamily: 'Noto Sans',
+                                                                                              fontSize: 32.0,
+                                                                                            ),
+                                                                                      ),
+                                                                                    ),
+                                                                                  ],
+                                                                                ),
+                                                                              ),
+                                                                            ],
+                                                                          ),
+                                                                        );
+                                                                      },
+                                                                    ),
+                                                                  ),
+                                                                  Padding(
+                                                                    padding: EdgeInsetsDirectional
+                                                                        .fromSTEB(
                                                                             8.0,
                                                                             0.0,
                                                                             8.0,
                                                                             0.0),
-                                                                        child: FutureBuilder<
-                                                                            DecksRecord>(
-                                                                          future: DecksRecord.getDocumentOnce(matchupsItem
-                                                                              .scores
-                                                                              .last
-                                                                              .deckRef!),
-                                                                          builder:
-                                                                              (context, snapshot) {
-                                                                            // Customize what your widget looks like when it's loading.
-                                                                            if (!snapshot.hasData) {
-                                                                              return Center(
-                                                                                child: SizedBox(
-                                                                                  width: 50.0,
-                                                                                  height: 50.0,
-                                                                                  child: SpinKitFadingFour(
-                                                                                    color: Color(0xFFE6486F),
-                                                                                    size: 50.0,
-                                                                                  ),
-                                                                                ),
-                                                                              );
-                                                                            }
-                                                                            final player2DecksRecord =
-                                                                                snapshot.data!;
-                                                                            return Container(
-                                                                              width: MediaQuery.sizeOf(context).width * 0.4,
-                                                                              height: MediaQuery.sizeOf(context).height * 0.2,
-                                                                              decoration: BoxDecoration(),
-                                                                              child: Column(
-                                                                                mainAxisSize: MainAxisSize.max,
-                                                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                                                crossAxisAlignment: CrossAxisAlignment.center,
-                                                                                children: [
-                                                                                  Padding(
-                                                                                    padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 8.0),
-                                                                                    child: AutoSizeText(
-                                                                                      player2DecksRecord.name,
-                                                                                      maxLines: 1,
-                                                                                      style: FlutterFlowTheme.of(context).titleLarge.override(
-                                                                                            fontFamily: 'Cinzel Decorative',
-                                                                                            fontSize: 30.0,
-                                                                                            lineHeight: 0.8,
-                                                                                          ),
-                                                                                    ),
-                                                                                  ),
-                                                                                  Padding(
-                                                                                    padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
-                                                                                    child: Row(
-                                                                                      mainAxisSize: MainAxisSize.max,
-                                                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                                                      children: [
-                                                                                        Padding(
-                                                                                          padding: EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 12.0, 0.0),
-                                                                                          child: Text(
-                                                                                            matchupsItem.scores.last.score.toString(),
-                                                                                            style: FlutterFlowTheme.of(context).bodyMedium.override(
-                                                                                                  fontFamily: 'Noto Sans',
-                                                                                                  fontSize: 32.0,
-                                                                                                ),
-                                                                                          ),
-                                                                                        ),
-                                                                                        Container(
-                                                                                          width: MediaQuery.sizeOf(context).width * 0.15,
-                                                                                          height: MediaQuery.sizeOf(context).width * 0.15,
-                                                                                          clipBehavior: Clip.antiAlias,
-                                                                                          decoration: BoxDecoration(
-                                                                                            shape: BoxShape.circle,
-                                                                                          ),
-                                                                                          child: CachedNetworkImage(
-                                                                                            fadeInDuration: Duration(milliseconds: 500),
-                                                                                            fadeOutDuration: Duration(milliseconds: 500),
-                                                                                            imageUrl: player2DecksRecord.avatarUrl,
-                                                                                            fit: BoxFit.cover,
-                                                                                          ),
-                                                                                        ),
-                                                                                      ],
-                                                                                    ),
-                                                                                  ),
-                                                                                ],
+                                                                    child: FutureBuilder<
+                                                                        DecksRecord>(
+                                                                      future: DecksRecord.getDocumentOnce(matchupsItem
+                                                                          .scores
+                                                                          .last
+                                                                          .deckRef!),
+                                                                      builder:
+                                                                          (context,
+                                                                              snapshot) {
+                                                                        // Customize what your widget looks like when it's loading.
+                                                                        if (!snapshot
+                                                                            .hasData) {
+                                                                          return Center(
+                                                                            child:
+                                                                                SizedBox(
+                                                                              width: 50.0,
+                                                                              height: 50.0,
+                                                                              child: SpinKitFadingFour(
+                                                                                color: Color(0xFFE6486F),
+                                                                                size: 50.0,
                                                                               ),
-                                                                            );
-                                                                          },
-                                                                        ),
-                                                                      ),
-                                                                    ],
+                                                                            ),
+                                                                          );
+                                                                        }
+                                                                        final player2DecksRecord =
+                                                                            snapshot.data!;
+                                                                        return Container(
+                                                                          width:
+                                                                              MediaQuery.sizeOf(context).width * 0.4,
+                                                                          height:
+                                                                              MediaQuery.sizeOf(context).height * 0.2,
+                                                                          decoration:
+                                                                              BoxDecoration(),
+                                                                          child:
+                                                                              Column(
+                                                                            mainAxisSize:
+                                                                                MainAxisSize.max,
+                                                                            mainAxisAlignment:
+                                                                                MainAxisAlignment.center,
+                                                                            crossAxisAlignment:
+                                                                                CrossAxisAlignment.center,
+                                                                            children: [
+                                                                              Padding(
+                                                                                padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 8.0),
+                                                                                child: AutoSizeText(
+                                                                                  player2DecksRecord.name,
+                                                                                  maxLines: 1,
+                                                                                  style: FlutterFlowTheme.of(context).titleLarge.override(
+                                                                                        fontFamily: 'Cinzel Decorative',
+                                                                                        fontSize: 30.0,
+                                                                                        lineHeight: 0.8,
+                                                                                      ),
+                                                                                ),
+                                                                              ),
+                                                                              Padding(
+                                                                                padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
+                                                                                child: Row(
+                                                                                  mainAxisSize: MainAxisSize.max,
+                                                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                                                  children: [
+                                                                                    Padding(
+                                                                                      padding: EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 12.0, 0.0),
+                                                                                      child: Text(
+                                                                                        matchupsItem.scores.last.score.toString(),
+                                                                                        style: FlutterFlowTheme.of(context).bodyMedium.override(
+                                                                                              fontFamily: 'Noto Sans',
+                                                                                              fontSize: 32.0,
+                                                                                            ),
+                                                                                      ),
+                                                                                    ),
+                                                                                    Container(
+                                                                                      width: MediaQuery.sizeOf(context).width * 0.15,
+                                                                                      height: MediaQuery.sizeOf(context).width * 0.15,
+                                                                                      clipBehavior: Clip.antiAlias,
+                                                                                      decoration: BoxDecoration(
+                                                                                        shape: BoxShape.circle,
+                                                                                      ),
+                                                                                      child: CachedNetworkImage(
+                                                                                        fadeInDuration: Duration(milliseconds: 500),
+                                                                                        fadeOutDuration: Duration(milliseconds: 500),
+                                                                                        imageUrl: player2DecksRecord.avatarUrl,
+                                                                                        fit: BoxFit.cover,
+                                                                                      ),
+                                                                                    ),
+                                                                                  ],
+                                                                                ),
+                                                                              ),
+                                                                            ],
+                                                                          ),
+                                                                        );
+                                                                      },
+                                                                    ),
                                                                   ),
                                                                 ],
                                                               ),
-                                                            ),
+                                                            ],
                                                           ),
                                                         ),
                                                       ),
-                                                    );
-                                                  },
+                                                    ),
+                                                  ),
                                                 );
                                               },
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                            );
+                                          },
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -559,6 +571,8 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
                                           onPressed: () async {
                                             logFirebaseEvent(
                                                 'B3_MATCHUP_LIST_PAGE_DECKS_BTN_ON_TAP');
+                                            logFirebaseEvent(
+                                                'Button_update_page_state');
                                             setState(() {
                                               _model.isDeckFilterOpen =
                                                   valueOrDefault<bool>(
@@ -605,9 +619,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
                                         ),
                                         if (_model.isDeckFilterOpen)
                                           Padding(
-                                            padding:
-                                                EdgeInsetsDirectional.fromSTEB(
-                                                    8.0, 8.0, 8.0, 8.0),
+                                            padding: EdgeInsets.all(8.0),
                                             child: Container(
                                               decoration: BoxDecoration(
                                                 color: Color(0xFF645D5D),
@@ -676,7 +688,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
                             ),
                           if (queryWrapperMatchupsRecordList.length == 0)
                             Align(
-                              alignment: AlignmentDirectional(0.00, 0.00),
+                              alignment: AlignmentDirectional(0.0, 0.0),
                               child: Padding(
                                 padding: EdgeInsetsDirectional.fromSTEB(
                                     28.0, 0.0, 28.0, 40.0),
@@ -711,8 +723,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
                                       ),
                                     ),
                                     Align(
-                                      alignment:
-                                          AlignmentDirectional(0.00, 0.00),
+                                      alignment: AlignmentDirectional(0.0, 0.0),
                                       child: Padding(
                                         padding: EdgeInsetsDirectional.fromSTEB(
                                             0.0, 4.0, 0.0, 0.0),

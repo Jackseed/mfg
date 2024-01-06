@@ -150,7 +150,7 @@ class _BGameFormWidgetState extends State<BGameFormWidget> {
                               color: FlutterFlowTheme.of(context).primary,
                               shape: BoxShape.circle,
                             ),
-                            alignment: AlignmentDirectional(0.00, 0.00),
+                            alignment: AlignmentDirectional(0.0, 0.0),
                             child: Padding(
                               padding: EdgeInsetsDirectional.fromSTEB(
                                   0.0, 8.0, 0.0, 0.0),
@@ -191,7 +191,7 @@ class _BGameFormWidgetState extends State<BGameFormWidget> {
                           ),
                         ),
                         Align(
-                          alignment: AlignmentDirectional(0.00, 1.00),
+                          alignment: AlignmentDirectional(0.0, 1.0),
                           child: Padding(
                             padding: EdgeInsetsDirectional.fromSTEB(
                                 0.0, 20.0, 0.0, 20.0),
@@ -202,6 +202,7 @@ class _BGameFormWidgetState extends State<BGameFormWidget> {
                                 if (FFAppState().deck1Selected &
                                     FFAppState().deck2Selected) {
                                   // Get all decks
+                                  logFirebaseEvent('StartButton_Getalldecks');
                                   _model.crewDecks = await queryDecksRecordOnce(
                                     queryBuilder: (decksRecord) =>
                                         decksRecord.where(
@@ -211,6 +212,8 @@ class _BGameFormWidgetState extends State<BGameFormWidget> {
                                     ),
                                   );
                                   // Save app-wise Deck 1 & 2
+                                  logFirebaseEvent(
+                                      'StartButton_Saveapp-wiseDeck1&2');
                                   setState(() {
                                     FFAppState().currentGameDeckRef1 =
                                         _model.crewDecks
@@ -239,6 +242,7 @@ class _BGameFormWidgetState extends State<BGameFormWidget> {
                                             ?.first
                                             ?.reference;
                                   });
+                                  logFirebaseEvent('StartButton_navigate_to');
 
                                   context.pushNamed(
                                     'C_GameView',
@@ -251,15 +255,27 @@ class _BGameFormWidgetState extends State<BGameFormWidget> {
                                   );
                                 } else {
                                   // You need to select both decks
+                                  logFirebaseEvent(
+                                      'StartButton_Youneedtoselectbothdecks');
+                                  ScaffoldMessenger.of(context)
+                                      .clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'You need to select both decks',
+                                        valueOrDefault<String>(
+                                          (String appLanguage) {
+                                            return appLanguage == 'fr'
+                                                ? 'Vous devez sélectionner les 2 decks.'
+                                                : 'You need to select both decks.';
+                                          }(FFLocalizations.of(context)
+                                              .languageCode),
+                                          'You need to select both decks.',
+                                        ),
                                         style: GoogleFonts.getFont(
                                           'Noto Sans',
                                           color: FlutterFlowTheme.of(context)
                                               .primaryText,
-                                          fontWeight: FontWeight.normal,
+                                          fontWeight: FontWeight.w500,
                                           fontSize: 16.0,
                                         ),
                                       ),
@@ -283,8 +299,7 @@ class _BGameFormWidgetState extends State<BGameFormWidget> {
                               options: FFButtonOptions(
                                 width: 280.0,
                                 height: 56.0,
-                                padding: EdgeInsetsDirectional.fromSTEB(
-                                    0.0, 0.0, 0.0, 0.0),
+                                padding: EdgeInsets.all(0.0),
                                 iconPadding: EdgeInsetsDirectional.fromSTEB(
                                     0.0, 0.0, 8.0, 0.0),
                                 color: FlutterFlowTheme.of(context).primary,
