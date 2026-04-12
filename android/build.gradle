@@ -8,6 +8,40 @@ allprojects {
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+
+    project.afterEvaluate {
+        // Auto-set namespace for old plugins that don't declare one (required by AGP 8+)
+        if (project.plugins.hasPlugin("com.android.library")) {
+            def androidExt = project.extensions.findByName("android")
+            if (androidExt != null && (androidExt.namespace == null || androidExt.namespace.isEmpty())) {
+                def manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
+                if (manifestFile.exists()) {
+                    def manifest = new XmlSlurper().parse(manifestFile)
+                    if (manifest.@package) {
+                        androidExt.namespace = manifest.@package.toString()
+                    }
+                }
+            }
+        }
+
+        // Force consistent compileSdk and JVM target for all subprojects
+        if (project.hasProperty("android")) {
+            project.android {
+                if (project.android.compileSdkVersion.replace("android-", "").toInteger() < 36) {
+                    compileSdk 36
+                }
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+        project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")
