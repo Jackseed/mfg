@@ -339,11 +339,11 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                             logFirebaseEvent('Button_Updateuser');
 
                             await currentUserReference!
-                                .update(createUsersRecordData(
+                                .set(createUsersRecordData(
                               name: _model.selectedCrewmate?.name,
                               crewId: widget.crewId,
                               crewmateRef: _model.selectedCrewmate?.reference,
-                            ));
+                            ), SetOptions(merge: true));
                             // Get crewmate Decks
                             logFirebaseEvent('Button_GetcrewmateDecks');
                             _model.crewmateDecks = await queryDecksRecordOnce(

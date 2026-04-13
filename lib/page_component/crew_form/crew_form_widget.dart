@@ -270,11 +270,11 @@ class _CrewFormWidgetState extends State<CrewFormWidget> {
                           logFirebaseEvent('Button_UpdateUser');
 
                           await currentUserReference!
-                              .update(createUsersRecordData(
+                              .set(createUsersRecordData(
                             crewId: _model.crewDoc?.reference.id,
                             name: _model.userNameFieldController.text,
                             crewmateRef: _model.crewmateDoc?.reference,
-                          ));
+                          ), SetOptions(merge: true));
                           // Back to home
                           logFirebaseEvent('Button_Backtohome');
                           context.safePop();
