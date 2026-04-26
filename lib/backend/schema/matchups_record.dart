@@ -41,6 +41,31 @@ class MatchupsRecord extends FirestoreRecord {
   String get crewId => _crewId ?? '';
   bool hasCrewId() => _crewId != null;
 
+  // "tournamentRef" field.
+  DocumentReference? _tournamentRef;
+  DocumentReference? get tournamentRef => _tournamentRef;
+  bool hasTournamentRef() => _tournamentRef != null;
+
+  // "tournamentId" field.
+  String? _tournamentId;
+  String get tournamentId => _tournamentId ?? '';
+  bool hasTournamentId() => _tournamentId != null;
+
+  // "organizationRef" field.
+  DocumentReference? _organizationRef;
+  DocumentReference? get organizationRef => _organizationRef;
+  bool hasOrganizationRef() => _organizationRef != null;
+
+  // "organizationId" field.
+  String? _organizationId;
+  String get organizationId => _organizationId ?? '';
+  bool hasOrganizationId() => _organizationId != null;
+
+  // "round" field.
+  int? _round;
+  int get round => _round ?? 0;
+  bool hasRound() => _round != null;
+
   void _initializeFields() {
     _gameIds = getDataList(snapshotData['gameIds']);
     _deckIds = getDataList(snapshotData['deckIds']);
@@ -50,6 +75,11 @@ class MatchupsRecord extends FirestoreRecord {
     );
     _matchupId = snapshotData['matchupId'] as String?;
     _crewId = snapshotData['crewId'] as String?;
+    _tournamentRef = snapshotData['tournamentRef'] as DocumentReference?;
+    _tournamentId = snapshotData['tournamentId'] as String?;
+    _organizationRef = snapshotData['organizationRef'] as DocumentReference?;
+    _organizationId = snapshotData['organizationId'] as String?;
+    _round = castToType<int>(snapshotData['round']);
   }
 
   static CollectionReference get collection =>
@@ -89,11 +119,21 @@ class MatchupsRecord extends FirestoreRecord {
 Map<String, dynamic> createMatchupsRecordData({
   String? matchupId,
   String? crewId,
+  DocumentReference? tournamentRef,
+  String? tournamentId,
+  DocumentReference? organizationRef,
+  String? organizationId,
+  int? round,
 }) {
   final firestoreData = mapToFirestore(
     <String, dynamic>{
       'matchupId': matchupId,
       'crewId': crewId,
+      'tournamentRef': tournamentRef,
+      'tournamentId': tournamentId,
+      'organizationRef': organizationRef,
+      'organizationId': organizationId,
+      'round': round,
     }.withoutNulls,
   );
 
@@ -110,12 +150,25 @@ class MatchupsRecordDocumentEquality implements Equality<MatchupsRecord> {
         listEquality.equals(e1?.deckIds, e2?.deckIds) &&
         listEquality.equals(e1?.scores, e2?.scores) &&
         e1?.matchupId == e2?.matchupId &&
-        e1?.crewId == e2?.crewId;
+        e1?.crewId == e2?.crewId &&
+        e1?.tournamentRef == e2?.tournamentRef &&
+        e1?.tournamentId == e2?.tournamentId &&
+        e1?.organizationRef == e2?.organizationRef &&
+        e1?.organizationId == e2?.organizationId;
   }
 
   @override
-  int hash(MatchupsRecord? e) => const ListEquality()
-      .hash([e?.gameIds, e?.deckIds, e?.scores, e?.matchupId, e?.crewId]);
+  int hash(MatchupsRecord? e) => const ListEquality().hash([
+        e?.gameIds,
+        e?.deckIds,
+        e?.scores,
+        e?.matchupId,
+        e?.crewId,
+        e?.tournamentRef,
+        e?.tournamentId,
+        e?.organizationRef,
+        e?.organizationId,
+      ]);
 
   @override
   bool isValidKey(Object? o) => o is MatchupsRecord;
