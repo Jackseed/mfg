@@ -78,7 +78,12 @@ class _BGameFormWidgetState extends State<BGameFormWidget> {
               ),
             );
           }
-          List<CrewmatesRecord> bGameFormCrewmatesRecordList = snapshot.data!;
+          // Filter to actual crew members only (userReference set).
+          // Opponents auto-imported from Spicerack have no userReference.
+          final List<CrewmatesRecord> bGameFormCrewmatesRecordList = snapshot
+              .data!
+              .where((c) => c.hasUserReference())
+              .toList();
           return GestureDetector(
             onTap: () => _model.unfocusNode.canRequestFocus
                 ? FocusScope.of(context).requestFocus(_model.unfocusNode)

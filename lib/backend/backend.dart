@@ -13,6 +13,11 @@ import 'schema/crews_record.dart';
 import 'schema/crewmates_record.dart';
 import 'schema/matchups_record.dart';
 import 'schema/images_record.dart';
+import 'schema/tournaments_record.dart';
+import 'schema/organizations_record.dart';
+import 'schema/organization_members_record.dart';
+import 'schema/archetypes_record.dart';
+import 'schema/spicerack_decks_record.dart';
 
 export 'dart:async' show StreamSubscription;
 export 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,6 +33,11 @@ export 'schema/crews_record.dart';
 export 'schema/crewmates_record.dart';
 export 'schema/matchups_record.dart';
 export 'schema/images_record.dart';
+export 'schema/tournaments_record.dart';
+export 'schema/organizations_record.dart';
+export 'schema/organization_members_record.dart';
+export 'schema/archetypes_record.dart';
+export 'schema/spicerack_decks_record.dart';
 
 /// Functions to query GamesRecords (as a Stream and as a Future).
 Future<int> queryGamesRecordCount({
@@ -326,6 +336,194 @@ Future<List<ImagesRecord>> queryImagesRecordOnce({
     queryCollectionOnce(
       ImagesRecord.collection,
       ImagesRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query TournamentsRecords (as a Stream and as a Future).
+Future<int> queryTournamentsRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      TournamentsRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<TournamentsRecord>> queryTournamentsRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      TournamentsRecord.collection,
+      TournamentsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<TournamentsRecord>> queryTournamentsRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      TournamentsRecord.collection,
+      TournamentsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query OrganizationsRecords (as a Stream and as a Future).
+Future<int> queryOrganizationsRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      OrganizationsRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<OrganizationsRecord>> queryOrganizationsRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      OrganizationsRecord.collection,
+      OrganizationsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<OrganizationsRecord>> queryOrganizationsRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      OrganizationsRecord.collection,
+      OrganizationsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query OrganizationMembersRecords (as a Stream and as a Future).
+Future<int> queryOrganizationMembersRecordCount({
+  DocumentReference? parent,
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      OrganizationMembersRecord.collection(parent),
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<OrganizationMembersRecord>> queryOrganizationMembersRecord({
+  DocumentReference? parent,
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      OrganizationMembersRecord.collection(parent),
+      OrganizationMembersRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<OrganizationMembersRecord>> queryOrganizationMembersRecordOnce({
+  DocumentReference? parent,
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      OrganizationMembersRecord.collection(parent),
+      OrganizationMembersRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query ArchetypesRecords (as a Stream and as a Future).
+Future<int> queryArchetypesRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      ArchetypesRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<ArchetypesRecord>> queryArchetypesRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      ArchetypesRecord.collection,
+      ArchetypesRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<ArchetypesRecord>> queryArchetypesRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      ArchetypesRecord.collection,
+      ArchetypesRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query SpicerackDecksRecords (as a Stream and as a Future).
+Future<int> querySpicerackDecksRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      SpicerackDecksRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<SpicerackDecksRecord>> querySpicerackDecksRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      SpicerackDecksRecord.collection,
+      SpicerackDecksRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<SpicerackDecksRecord>> querySpicerackDecksRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      SpicerackDecksRecord.collection,
+      SpicerackDecksRecord.fromSnapshot,
       queryBuilder: queryBuilder,
       limit: limit,
       singleRecord: singleRecord,

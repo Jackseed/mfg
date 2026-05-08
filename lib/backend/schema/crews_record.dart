@@ -26,9 +26,16 @@ class CrewsRecord extends FirestoreRecord {
   DocumentReference? get ref => _ref;
   bool hasRef() => _ref != null;
 
+  // "isSolo" field. True for auto-created personal crews (Spicerack import
+  // without an existing crew). Solo crews can be replaced by joining a real one.
+  bool? _isSolo;
+  bool get isSolo => _isSolo ?? false;
+  bool hasIsSolo() => _isSolo != null;
+
   void _initializeFields() {
     _name = snapshotData['name'] as String?;
     _ref = snapshotData['_ref'] as DocumentReference?;
+    _isSolo = snapshotData['isSolo'] as bool?;
   }
 
   static CollectionReference get collection =>
@@ -67,11 +74,13 @@ class CrewsRecord extends FirestoreRecord {
 Map<String, dynamic> createCrewsRecordData({
   String? name,
   DocumentReference? ref,
+  bool? isSolo,
 }) {
   final firestoreData = mapToFirestore(
     <String, dynamic>{
       'name': name,
       '_ref': ref,
+      'isSolo': isSolo,
     }.withoutNulls,
   );
 
@@ -83,11 +92,11 @@ class CrewsRecordDocumentEquality implements Equality<CrewsRecord> {
 
   @override
   bool equals(CrewsRecord? e1, CrewsRecord? e2) {
-    return e1?.name == e2?.name && e1?.ref == e2?.ref;
+    return e1?.name == e2?.name && e1?.ref == e2?.ref && e1?.isSolo == e2?.isSolo;
   }
 
   @override
-  int hash(CrewsRecord? e) => const ListEquality().hash([e?.name, e?.ref]);
+  int hash(CrewsRecord? e) => const ListEquality().hash([e?.name, e?.ref, e?.isSolo]);
 
   @override
   bool isValidKey(Object? o) => o is CrewsRecord;

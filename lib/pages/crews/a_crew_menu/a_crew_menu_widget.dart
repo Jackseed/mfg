@@ -86,8 +86,9 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
           top: true,
           child: Stack(
             children: [
-              if (valueOrDefault(currentUserDocument?.crewId, '') == null ||
-                  valueOrDefault(currentUserDocument?.crewId, '') == '')
+              if ((valueOrDefault(currentUserDocument?.crewId, '') == null ||
+                      valueOrDefault(currentUserDocument?.crewId, '') == '') &&
+                  (currentUserDocument?.organizationIds ?? []).isEmpty)
                 AuthUserStreamWidget(
                   builder: (context) => Container(
                     width: MediaQuery.sizeOf(context).width * 1.0,
@@ -215,12 +216,66 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                             ),
                           ),
                         ),
+                        // Import from Spicerack — available even without a
+                        // crew; a solo crew is auto-created on first import.
+                        InkWell(
+                          splashColor: Colors.transparent,
+                          focusColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          onTap: () => context.pushNamed('SpicerackImport'),
+                          child: Material(
+                            color: Colors.transparent,
+                            elevation: 6.0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: Container(
+                              width: MediaQuery.sizeOf(context).width * 0.8,
+                              height:
+                                  MediaQuery.sizeOf(context).height * 0.10,
+                              decoration: BoxDecoration(
+                                color: Color(0xFF2EC4B6).withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(
+                                  color: Color(0xFF2EC4B6).withOpacity(0.5),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.download_rounded,
+                                    color:
+                                        FlutterFlowTheme.of(context).primaryText,
+                                    size: 24,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'IMPORTER SPICERACK',
+                                    style: FlutterFlowTheme.of(context)
+                                        .titleSmall
+                                        .override(
+                                          fontFamily: 'Cinzel Decorative',
+                                          color: FlutterFlowTheme.of(context)
+                                              .primaryText,
+                                          fontSize: 16.0,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ].divide(SizedBox(height: 32.0)),
                     ),
                   ),
                 ),
-              if (valueOrDefault(currentUserDocument?.crewId, '') != null &&
-                  valueOrDefault(currentUserDocument?.crewId, '') != '')
+              if ((valueOrDefault(currentUserDocument?.crewId, '') != null &&
+                      valueOrDefault(currentUserDocument?.crewId, '') != '') ||
+                  (currentUserDocument?.organizationIds ?? []).isNotEmpty)
                 AuthUserStreamWidget(
                   builder: (context) => Container(
                     width: MediaQuery.sizeOf(context).width * 1.0,
@@ -266,7 +321,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                             ),
                             child: Container(
                               width: MediaQuery.sizeOf(context).width * 0.8,
-                              height: MediaQuery.sizeOf(context).height * 0.15,
+                              height: MediaQuery.sizeOf(context).height * 0.13,
                               decoration: BoxDecoration(
                                 image: DecorationImage(
                                   fit: BoxFit.cover,
@@ -302,14 +357,14 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                                 .override(
                                                   fontFamily:
                                                       'Cinzel Decorative',
-                                                  fontSize: 34.0,
+                                                  fontSize: 30.0,
                                                 ),
                                           ),
                                         ),
                                         Padding(
                                           padding:
                                               EdgeInsetsDirectional.fromSTEB(
-                                                  16.0, 8.0, 0.0, 0.0),
+                                                  16.0, 4.0, 0.0, 0.0),
                                           child: Text(
                                             FFLocalizations.of(context).getText(
                                               '92cwdwwx' /* History, analytics, creation */,
@@ -319,7 +374,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                                 .bodyMedium
                                                 .override(
                                                   fontFamily: 'Noto Sans',
-                                                  fontSize: 18.0,
+                                                  fontSize: 14.0,
                                                 ),
                                           ),
                                         ),
@@ -352,6 +407,288 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                           highlightColor: Colors.transparent,
                           onTap: () async {
                             logFirebaseEvent(
+                                'A_CREW_MENU_Tournaments_ON_TAP');
+                            logFirebaseEvent('Tournaments_navigate_to');
+
+                            context.pushNamed('TournamentList');
+                          },
+                          child: Material(
+                            color: Colors.transparent,
+                            elevation: 6.0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: Container(
+                              width: MediaQuery.sizeOf(context).width * 0.8,
+                              height: MediaQuery.sizeOf(context).height * 0.10,
+                              decoration: BoxDecoration(
+                                color: Color(0xFF9B59B6).withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(
+                                  color: Color(0xFF9B59B6).withOpacity(0.5),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.max,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Padding(
+                                          padding:
+                                              EdgeInsetsDirectional.fromSTEB(
+                                                  16.0, 0.0, 0.0, 0.0),
+                                          child: Text(
+                                            'TOURNAMENTS',
+                                            textAlign: TextAlign.start,
+                                            style: FlutterFlowTheme.of(context)
+                                                .titleLarge
+                                                .override(
+                                                  fontFamily:
+                                                      'Cinzel Decorative',
+                                                  fontSize: 24.0,
+                                                ),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding:
+                                              EdgeInsetsDirectional.fromSTEB(
+                                                  16.0, 4.0, 0.0, 0.0),
+                                          child: Text(
+                                            'Results & History',
+                                            textAlign: TextAlign.center,
+                                            style: FlutterFlowTheme.of(context)
+                                                .bodyMedium
+                                                .override(
+                                                  fontFamily: 'Noto Sans',
+                                                  fontSize: 14.0,
+                                                  color: Color(0xFF9B59B6),
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  FlutterFlowIconButton(
+                                    borderRadius: 20.0,
+                                    borderWidth: 1.0,
+                                    buttonSize: 40.0,
+                                    icon: Icon(
+                                      Icons.emoji_events_rounded,
+                                      color: FlutterFlowTheme.of(context)
+                                          .primaryText,
+                                      size: 24.0,
+                                    ),
+                                    onPressed: () {
+                                      print('Tournaments button pressed');
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          splashColor: Colors.transparent,
+                          focusColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          onTap: () async {
+                            logFirebaseEvent(
+                                'A_CREW_MENU_Organizations_ON_TAP');
+                            logFirebaseEvent('Organizations_navigate_to');
+
+                            context.pushNamed('OrganizationList');
+                          },
+                          child: Material(
+                            color: Colors.transparent,
+                            elevation: 6.0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: Container(
+                              width: MediaQuery.sizeOf(context).width * 0.8,
+                              height: MediaQuery.sizeOf(context).height * 0.10,
+                              decoration: BoxDecoration(
+                                color: Color(0xFFF39C12).withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(
+                                  color: Color(0xFFF39C12).withOpacity(0.5),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.max,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Padding(
+                                          padding:
+                                              EdgeInsetsDirectional.fromSTEB(
+                                                  16.0, 0.0, 0.0, 0.0),
+                                          child: Text(
+                                            'ORGANIZATIONS',
+                                            textAlign: TextAlign.start,
+                                            style: FlutterFlowTheme.of(context)
+                                                .titleLarge
+                                                .override(
+                                                  fontFamily:
+                                                      'Cinzel Decorative',
+                                                  fontSize: 22.0,
+                                                ),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding:
+                                              EdgeInsetsDirectional.fromSTEB(
+                                                  16.0, 4.0, 0.0, 0.0),
+                                          child: Text(
+                                            'LGS & leagues I belong to',
+                                            textAlign: TextAlign.center,
+                                            style: FlutterFlowTheme.of(context)
+                                                .bodyMedium
+                                                .override(
+                                                  fontFamily: 'Noto Sans',
+                                                  fontSize: 14.0,
+                                                  color: Color(0xFFF39C12),
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  FlutterFlowIconButton(
+                                    borderRadius: 20.0,
+                                    borderWidth: 1.0,
+                                    buttonSize: 40.0,
+                                    icon: Icon(
+                                      Icons.storefront_rounded,
+                                      color: FlutterFlowTheme.of(context)
+                                          .primaryText,
+                                      size: 24.0,
+                                    ),
+                                    onPressed: () {
+                                      print('Organizations button pressed');
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          splashColor: Colors.transparent,
+                          focusColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          onTap: () async {
+                            logFirebaseEvent(
+                                'A_CREW_MENU_PAGE_Spicerack_button_ON_TAP');
+                            logFirebaseEvent('Spicerack_button_navigate_to');
+
+                            context.pushNamed('SpicerackImport');
+                          },
+                          child: Material(
+                            color: Colors.transparent,
+                            elevation: 6.0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: Container(
+                              width: MediaQuery.sizeOf(context).width * 0.8,
+                              height: MediaQuery.sizeOf(context).height * 0.10,
+                              decoration: BoxDecoration(
+                                color: Color(0xFF2EC4B6).withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(
+                                  color: Color(0xFF2EC4B6).withOpacity(0.5),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.max,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Padding(
+                                          padding:
+                                              EdgeInsetsDirectional.fromSTEB(
+                                                  16.0, 0.0, 0.0, 0.0),
+                                          child: Text(
+                                            'IMPORT',
+                                            textAlign: TextAlign.start,
+                                            style: FlutterFlowTheme.of(context)
+                                                .titleLarge
+                                                .override(
+                                                  fontFamily:
+                                                      'Cinzel Decorative',
+                                                  fontSize: 24.0,
+                                                ),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding:
+                                              EdgeInsetsDirectional.fromSTEB(
+                                                  16.0, 4.0, 0.0, 0.0),
+                                          child: Text(
+                                            'From Spicerack',
+                                            textAlign: TextAlign.center,
+                                            style: FlutterFlowTheme.of(context)
+                                                .bodyMedium
+                                                .override(
+                                                  fontFamily: 'Noto Sans',
+                                                  fontSize: 14.0,
+                                                  color: Color(0xFF2EC4B6),
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  FlutterFlowIconButton(
+                                    borderRadius: 20.0,
+                                    borderWidth: 1.0,
+                                    buttonSize: 40.0,
+                                    icon: Icon(
+                                      Icons.download_rounded,
+                                      color: FlutterFlowTheme.of(context)
+                                          .primaryText,
+                                      size: 24.0,
+                                    ),
+                                    onPressed: () {
+                                      print('Import button pressed');
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          splashColor: Colors.transparent,
+                          focusColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          onTap: () async {
+                            logFirebaseEvent(
                                 'A_CREW_MENU_PAGE_Decks_button_ON_TAP');
                             logFirebaseEvent('Decks_button_navigate_to');
 
@@ -365,7 +702,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                             ),
                             child: Container(
                               width: MediaQuery.sizeOf(context).width * 0.8,
-                              height: MediaQuery.sizeOf(context).height * 0.15,
+                              height: MediaQuery.sizeOf(context).height * 0.13,
                               decoration: BoxDecoration(
                                 image: DecorationImage(
                                   fit: BoxFit.cover,
@@ -400,14 +737,14 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                                 .override(
                                                   fontFamily:
                                                       'Cinzel Decorative',
-                                                  fontSize: 34.0,
+                                                  fontSize: 30.0,
                                                 ),
                                           ),
                                         ),
                                         Padding(
                                           padding:
                                               EdgeInsetsDirectional.fromSTEB(
-                                                  16.0, 8.0, 0.0, 0.0),
+                                                  16.0, 4.0, 0.0, 0.0),
                                           child: Text(
                                             FFLocalizations.of(context).getText(
                                               's0pib50g' /* Create, edit, stats */,
@@ -417,7 +754,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                                 .bodyMedium
                                                 .override(
                                                   fontFamily: 'Noto Sans',
-                                                  fontSize: 18.0,
+                                                  fontSize: 14.0,
                                                 ),
                                           ),
                                         ),

@@ -179,6 +179,17 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
                 top: true,
                 child: Stack(
                   children: [
+                    // Compact stats strip — wins/losses/winrate + top 3
+                    // opponents. Uses the same query as the list below so
+                    // Firestore caches the reads; layout stays independent of
+                    // the FlutterFlow-generated structure below.
+                    Align(
+                      alignment: AlignmentDirectional(0, -1),
+                      child: _buildGameStatsStrip(
+                        context,
+                        c2GameListDecksRecordList,
+                      ),
+                    ),
                     StreamBuilder<List<GamesRecord>>(
                       stream: queryGamesRecord(
                         queryBuilder: (gamesRecord) => gamesRecord
@@ -782,6 +793,208 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
           );
         },
       ),
+    );
+  }
+
+  /// Compact stats bar rendered at the top of the game list. Queries the same
+  /// games stream the list uses (hits Firestore cache) and rolls up:
+  ///   • total games played / wins / losses / draws / win rate
+  ///   • top 3 opponent archetypes faced (by the deck in focus)
+  Widget _buildGameStatsStrip(
+    BuildContext context,
+    List<DecksRecord> allCrewDecks,
+  ) {
+    return StreamBuilder<List<GamesRecord>>(
+      stream: queryGamesRecord(
+        queryBuilder: (gamesRecord) => gamesRecord
+            .where(
+              'crewId',
+              isEqualTo:
+                  valueOrDefault(currentUserDocument?.crewId, '') != ''
+                      ? valueOrDefault(currentUserDocument?.crewId, '')
+                      : null,
+            )
+            .where(
+              'deckIds',
+              arrayContains: widget.deckId != '' ? widget.deckId : null,
+            ),
+      ),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return SizedBox(height: 58);
+        final games = snapshot.data!;
+
+        // Tally opponent archetypes faced by the deck in focus. We can't roll
+        // up wins/losses here without another subcollection query (scores live
+        // on `games/{id}/players/*`) — those are already displayed per-row in
+        // the list below, so we stick to cheap aggregates derivable from the
+        // games list itself: total games + most-faced opponents.
+        final opponentTally = <String, int>{};
+        final opponentAvatars = <String, String>{};
+
+        final deckById = <String, DecksRecord>{};
+        for (final d in allCrewDecks) {
+          if (d.deckId.isNotEmpty) deckById[d.deckId] = d;
+        }
+
+        for (final g in games) {
+          // Opponent deckId = the entry in deckIds that isn't the focused deck.
+          final opponentDeckId = g.deckIds
+              .where((id) => id != widget.deckId)
+              .firstOrNull;
+          if (opponentDeckId == null || opponentDeckId.isEmpty) continue;
+          final oppDeck = deckById[opponentDeckId];
+          if (oppDeck == null) continue;
+          final label = oppDeck.avatarName.trim().isNotEmpty
+              ? oppDeck.avatarName.trim()
+              : oppDeck.name.trim();
+          if (label.isEmpty) continue;
+          final key = label.toLowerCase();
+          opponentTally[key] = (opponentTally[key] ?? 0) + 1;
+          if (!opponentAvatars.containsKey(key) &&
+              oppDeck.hasAvatarUrl() &&
+              oppDeck.avatarUrl.isNotEmpty) {
+            opponentAvatars[key] = oppDeck.avatarUrl;
+          }
+        }
+
+        final total = games.length;
+        if (total == 0) return SizedBox(height: 58);
+
+        final topOpponents = opponentTally.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        final topSlice = topOpponents.take(3).toList();
+
+        final accent = FlutterFlowTheme.of(context).primaryText;
+
+        return Container(
+          margin: EdgeInsets.fromLTRB(12, 8, 12, 0),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.35),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: accent.withOpacity(0.12)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Left: total games played with this deck.
+              Row(
+                children: [
+                  _miniStat(context, '$total', 'games'),
+                  if (opponentTally.isNotEmpty) ...[
+                    SizedBox(width: 10),
+                    _miniStat(
+                      context,
+                      '${opponentTally.length}',
+                      'opponents',
+                    ),
+                  ],
+                ],
+              ),
+              // Right: top 3 opponent archetypes (avatars only, tooltip = name).
+              if (topSlice.isNotEmpty)
+                Row(
+                  children: [
+                    for (final entry in topSlice)
+                      Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Tooltip(
+                          message:
+                              '${_prettify(entry.key)} \u00d7 ${entry.value}',
+                          child: _avatarChip(
+                            opponentAvatars[entry.key],
+                            entry.value.toString(),
+                            accent: accent,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _prettify(String lowerKey) {
+    if (lowerKey.isEmpty) return lowerKey;
+    return lowerKey[0].toUpperCase() + lowerKey.substring(1);
+  }
+
+  Widget _miniStat(BuildContext context, String value, String label,
+      {Color? color}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Cinzel Decorative',
+            color: color ?? FlutterFlowTheme.of(context).primaryText,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(width: 3),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Noto Sans',
+            color: FlutterFlowTheme.of(context)
+                .primaryText
+                .withOpacity(0.55),
+            fontSize: 10,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _avatarChip(String? url, String badge, {required Color accent}) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: accent.withOpacity(0.1),
+            shape: BoxShape.circle,
+            border: Border.all(color: accent.withOpacity(0.25), width: 1),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: url != null && url.isNotEmpty
+              ? Image.network(url, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Icon(
+                        Icons.style,
+                        size: 14,
+                        color: accent.withOpacity(0.5),
+                      ))
+              : Icon(Icons.style, size: 14, color: accent.withOpacity(0.5)),
+        ),
+        Positioned(
+          right: -4,
+          bottom: -4,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.75),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              badge,
+              style: TextStyle(
+                fontFamily: 'Noto Sans',
+                color: Colors.white,
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

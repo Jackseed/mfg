@@ -269,17 +269,19 @@ class SpicerackService {
 
   /// Build PlayerEventResult list from selected user event statuses.
   /// Uses the public API (with API key) to fetch full details.
+  ///
+  /// All events are fetched in parallel, and within each event the three
+  /// independent HTTP calls (details / registrations / raw registrations) are
+  /// also issued concurrently. This turns 12 events × 3 round-trips of
+  /// sequential HTTP into ~12 events worth of latency in parallel.
   Future<List<PlayerEventResult>> buildPlayerEventResults({
     required List<SpicerackUserEventStatus> statuses,
     void Function(int current, int total, String status)? onProgress,
   }) async {
-    final results = <PlayerEventResult>[];
+    int completed = 0;
+    onProgress?.call(0, statuses.length, 'Loading ${statuses.length} events...');
 
-    for (var i = 0; i < statuses.length; i++) {
-      final status = statuses[i];
-      onProgress?.call(
-          i + 1, statuses.length, 'Loading ${status.eventName}...');
-
+    final futures = statuses.map((status) async {
       final event = SpicerackEvent(
         id: status.eventId,
         name: status.eventName,
@@ -292,11 +294,27 @@ class SpicerackService {
       );
 
       try {
-        final eventDetail = await getEventDetails(status.eventId);
-        final matches = parseMatches(eventDetail);
-        final registrations = await getEventRegistrations(status.eventId);
+        // Fire all three HTTP calls concurrently — they don't depend on
+        // each other and the event API is happy to serve them in parallel.
+        final fetched = await Future.wait([
+          getEventDetails(status.eventId),
+          getEventRegistrations(status.eventId),
+          // Raw registrations for decklist parsing — wrap in a try so a
+          // failure here doesn't fail the whole event.
+          _get('/magic-events/${status.eventId}/registrations/')
+              .then((v) => v as List)
+              .catchError((e) {
+            print('[SpicerackService] Error parsing decklists: $e');
+            return <dynamic>[];
+          }),
+        ]);
 
-        // Find this user's registration
+        final eventDetail = fetched[0] as Map<String, dynamic>;
+        final registrations = fetched[1] as List<SpicerackRegistration>;
+        final rawRegs = fetched[2] as List;
+
+        final matches = parseMatches(eventDetail);
+
         SpicerackRegistration? playerReg;
         for (final r in registrations) {
           if (r.userEventStatusId == status.userEventStatusId) {
@@ -305,37 +323,35 @@ class SpicerackService {
           }
         }
         playerReg ??= registrations.isNotEmpty ? registrations.first : null;
-        if (playerReg == null) continue;
+        if (playerReg == null) return null;
 
         final allRegs = <int, SpicerackRegistration>{};
         for (final r in registrations) {
           allRegs[r.userId] = r;
         }
 
-        // Parse decklists
-        Map<int, SpicerackDecklist> decklists = {};
-        try {
-          final rawRegs =
-              await _get('/magic-events/${status.eventId}/registrations/');
-          decklists = parseDecklists(
-              (rawRegs as List).cast<Map<String, dynamic>>());
-        } catch (e) {
-          print('[SpicerackService] Error parsing decklists: $e');
-        }
+        final decklists =
+            parseDecklists(rawRegs.cast<Map<String, dynamic>>());
 
-        results.add(PlayerEventResult(
+        return PlayerEventResult(
           event: event,
           registration: playerReg,
           matches: matches,
           allRegistrations: allRegs,
           decklists: decklists,
-        ));
+        );
       } catch (e) {
         print('[SpicerackService] Error loading event ${status.eventId}: $e');
+        return null;
+      } finally {
+        completed++;
+        onProgress?.call(
+            completed, statuses.length, 'Loaded $completed/${statuses.length} events');
       }
-    }
+    }).toList();
 
-    return results;
+    final results = await Future.wait(futures);
+    return results.whereType<PlayerEventResult>().toList();
   }
 
   // ─── Public API methods ───────────────────────────────────────
@@ -357,6 +373,18 @@ class SpicerackService {
   /// Get full event details (tournament phases, matches).
   Future<Map<String, dynamic>> getEventDetails(int eventId) async {
     return (await _get('/magic-events/$eventId/')) as Map<String, dynamic>;
+  }
+
+  /// Fetch the per-user decklists attached to an event's registrations.
+  /// Returns `userId → SpicerackDecklist`. Best-effort: empty on failure.
+  Future<Map<int, SpicerackDecklist>> getEventDecklists(int eventId) async {
+    try {
+      final raw =
+          await _get('/magic-events/$eventId/registrations/') as List;
+      return parseDecklists(raw.cast<Map<String, dynamic>>());
+    } catch (_) {
+      return {};
+    }
   }
 
   /// Parse matches from event detail, filtering to 1v1 only.

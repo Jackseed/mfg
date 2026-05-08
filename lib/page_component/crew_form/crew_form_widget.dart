@@ -258,6 +258,7 @@ class _CrewFormWidgetState extends State<CrewFormWidget> {
                               .set(createCrewmatesRecordData(
                             userId: currentUserUid,
                             name: _model.userNameFieldController.text,
+                            userReference: currentUserReference,
                           ));
                           _model.crewmateDoc =
                               CrewmatesRecord.getDocumentFromData(
@@ -274,6 +275,7 @@ class _CrewFormWidgetState extends State<CrewFormWidget> {
                             crewId: _model.crewDoc?.reference.id,
                             name: _model.userNameFieldController.text,
                             crewmateRef: _model.crewmateDoc?.reference,
+                            isSoloCrew: false,
                           ), SetOptions(merge: true));
                           // Back to home
                           logFirebaseEvent('Button_Backtohome');

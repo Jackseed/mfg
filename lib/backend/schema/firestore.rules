@@ -5,14 +5,14 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow read: if request.auth != null;
       allow write: if request.auth != null;
-      allow delete: if false;
+      allow delete: if request.auth != null;
     }
 
     match /games/{parent}/players/{document} {
       allow create: if request.auth != null;
       allow read: if request.auth != null;
       allow write: if request.auth != null;
-      allow delete: if false;
+      allow delete: if request.auth != null;
     }
 
     match /{path=**}/players/{document} {
@@ -24,7 +24,7 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow read: if request.auth != null;
       allow write: if request.auth != null;
-      allow delete: if false;
+      allow delete: if request.auth != null;
     }
 
     match /users/{document} {
@@ -57,7 +57,7 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow read: if request.auth != null;
       allow write: if request.auth != null;
-      allow delete: if false;
+      allow delete: if request.auth != null;
     }
 
     match /images/{document} {
@@ -65,6 +65,64 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
       allow delete: if false;
+    }
+
+    // Tournaments — scoped to an organization. Any authenticated user can read;
+    // writes are open to authenticated users (Spicerack import + manual edits).
+    // Delete permitted so the v2 reset migration can clear test data.
+    match /tournaments/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    // Organizations — tournament context (LGS, league, Spicerack store).
+    // Anyone authenticated can read (so listing public orgs works). Create/edit
+    // is gated client-side for now; tighten later if multi-tenant concerns arise.
+    match /organizations/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if false;
+    }
+
+    match /organizations/{parent}/members/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    match /{path=**}/members/{document} {
+      allow read: if request.auth != null;
+    }
+
+    // Archetypes — global shared referential. Any authenticated user can
+    // create an archetype and all users read/write it (counters are denormalized
+    // by Cloud Functions).
+    match /archetypes/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // Spicerack deck attribution pivot — global, read by everyone, write by any
+    // authenticated user. This is what propagates a crew's tagging across all
+    // other crews that import the same Spicerack event.
+    match /spicerackDecks/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // Materialized stats — read by everyone, written only by Cloud Functions
+    // (Admin SDK bypasses rules, so `write: if false` is safe).
+    match /stats/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
     }
   }
 }

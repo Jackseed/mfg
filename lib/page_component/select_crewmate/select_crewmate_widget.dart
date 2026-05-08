@@ -343,6 +343,7 @@ class _SelectCrewmateWidgetState extends State<SelectCrewmateWidget> {
                               name: _model.selectedCrewmate?.name,
                               crewId: widget.crewId,
                               crewmateRef: _model.selectedCrewmate?.reference,
+                              isSoloCrew: false,
                             ), SetOptions(merge: true));
                             // Get crewmate Decks
                             logFirebaseEvent('Button_GetcrewmateDecks');

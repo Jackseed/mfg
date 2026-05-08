@@ -119,8 +119,8 @@ final kTranslationsMap = <Map<String, Map<String, String>>>[
       'fr': 'Nouvelle partie',
     },
     '5upd8f28': {
-      'en': 'Ranked game',
-      'fr': 'Partie classée',
+      'en': 'Crew game',
+      'fr': 'Partie Crew',
     },
     'hehegkwb': {
       'en': 'You need to have a Crew for ranked games',

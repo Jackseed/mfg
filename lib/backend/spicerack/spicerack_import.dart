@@ -137,20 +137,24 @@ class SpicerackImporter {
       organizationId: orgId,
     ));
 
-    // 4. Ensure all players have crewmate entries
-    // First, ensure the importing player is a crewmate
+    // 4. Ensure the importing player has a crewmate entry with userReference
+    // so they appear in the "real members" filter alongside manually-added crew.
     await _findOrCreateCrewmate(
       crewRef: crewRef,
       crewId: crewId,
       spicerackUserId: playerUserId,
       name: playerReg.userIdentifier,
+      userRef: currentUserReference,
     );
 
-    // 5. Import player's matches
+    // 5. Import ONLY the matches the importing user played in. Importing a
+    //    full tournament's bracket is expensive (~10× more matches in a Swiss
+    //    event) and most users don't need it on first import. Use
+    //    [expandTournament] from the tournament page to fetch the rest on
+    //    demand.
     final playerMatches = result.matches.where(
       (m) => m.players.any((p) => p.userId == playerUserId),
     );
-
     for (final match in playerMatches) {
       await _importMatch(
         match: match,
@@ -185,55 +189,62 @@ class SpicerackImporter {
     final player1 = match.players[0];
     final player2 = match.players[1];
 
-    // Ensure both players are crewmates
-    final crewmate1Ref = await _findOrCreateCrewmate(
-      crewRef: crewRef,
-      crewId: crewId,
-      spicerackUserId: player1.userId,
-      name: player1.name,
-    );
-    final crewmate2Ref = await _findOrCreateCrewmate(
-      crewRef: crewRef,
-      crewId: crewId,
-      spicerackUserId: player2.userId,
-      name: player2.name,
-    );
+    // Crewmate lookups can race in parallel — the in-memory cache prevents
+    // duplicate doc creation within a session, and the Firestore-by-name
+    // dedup further protects against duplicates across sessions.
+    final crewmateRefs = await Future.wait([
+      _findOrCreateCrewmate(
+        crewRef: crewRef,
+        crewId: crewId,
+        spicerackUserId: player1.userId,
+        name: player1.name,
+      ),
+      _findOrCreateCrewmate(
+        crewRef: crewRef,
+        crewId: crewId,
+        spicerackUserId: player2.userId,
+        name: player2.name,
+      ),
+    ]);
+    final crewmate1Ref = crewmateRefs[0];
+    final crewmate2Ref = crewmateRefs[1];
 
-    // Find or create decks for both players
     final dl1 = decklists[player1.userId];
     final dl2 = decklists[player2.userId];
 
-    final deck1Ref = await _findOrCreateDeck(
-      crewId: crewId,
-      crewmateRef: crewmate1Ref,
-      crewmateId: crewmate1Ref.id,
-      tournamentId: tournamentRef.id,
-      decklist: dl1,
-      playerName: player1.name,
-    );
-    final deck2Ref = await _findOrCreateDeck(
-      crewId: crewId,
-      crewmateRef: crewmate2Ref,
-      crewmateId: crewmate2Ref.id,
-      tournamentId: tournamentRef.id,
-      decklist: dl2,
-      playerName: player2.name,
-    );
+    // Decks similarly run in parallel — they only depend on the crewmate
+    // refs we just resolved.
+    final deckRefs = await Future.wait([
+      _findOrCreateDeck(
+        crewId: crewId,
+        crewmateRef: crewmate1Ref,
+        crewmateId: crewmate1Ref.id,
+        tournamentId: tournamentRef.id,
+        decklist: dl1,
+        playerName: player1.name,
+      ),
+      _findOrCreateDeck(
+        crewId: crewId,
+        crewmateRef: crewmate2Ref,
+        crewmateId: crewmate2Ref.id,
+        tournamentId: tournamentRef.id,
+        decklist: dl2,
+        playerName: player2.name,
+      ),
+    ]);
+    final deck1Ref = deckRefs[0];
+    final deck2Ref = deckRefs[1];
 
     final deck1Id = deck1Ref.id;
     final deck2Id = deck2Ref.id;
 
-    // Store actual game counts for BO3 display (e.g. 2/1 or 2/0).
-    // _userResult() compares > / < so WIN/LOSS/DRAW badges still work correctly.
     final score1 = player1.gamesWon;
     final score2 = player2.gamesWon;
-    print('[ImportV2] ${player1.name} gamesWon=$score1 vs ${player2.name} gamesWon=$score2');
 
-    // Create matchup ID from tournament + sorted deck IDs (unique per tournament)
     final sortedDeckIds = [deck1Id, deck2Id]..sort();
     final matchupIdStr = '${tournamentRef.id}_${sortedDeckIds.join('_')}';
 
-    // Find or create matchup
+    // Matchup must exist (or be created) before the game so we can reference it.
     final matchupRef = await _findOrCreateMatchup(
       crewId: crewId,
       orgRef: orgRef,
@@ -250,7 +261,8 @@ class SpicerackImporter {
       round: match.roundNumber,
     );
 
-    // Create game — scoped to organization (Spicerack context).
+    // Final 4 writes (game + 2 player sub-docs + matchup gameIds update) all
+    // commit together as a single batch — one round-trip instead of four.
     final gameRef = _firestore.collection('games').doc();
     final gameData = createGamesRecordData(
       date: event.startDate,
@@ -264,36 +276,142 @@ class SpicerackImporter {
       tournamentRef: tournamentRef,
       tournamentId: tournamentRef.id,
     );
-    // Add deckIds array
     gameData['deckIds'] = [deck1Id, deck2Id];
-    await gameRef.set(gameData);
 
-    // Create player sub-documents
-    await _createPlayerDoc(
-      gameRef: gameRef,
-      crewId: crewId,
-      crewmateRef: crewmate1Ref,
-      crewmateId: crewmate1Ref.id,
-      deckRef: deck1Ref,
-      deckId: deck1Id,
-      deckName: dl1?.archetype ?? dl1?.name ?? 'Unknown',
-      score: score1,
-    );
-    await _createPlayerDoc(
-      gameRef: gameRef,
-      crewId: crewId,
-      crewmateRef: crewmate2Ref,
-      crewmateId: crewmate2Ref.id,
-      deckRef: deck2Ref,
-      deckId: deck2Id,
-      deckName: dl2?.archetype ?? dl2?.name ?? 'Unknown',
-      score: score2,
-    );
+    final player1Ref = PlayersRecord.createDoc(gameRef);
+    final player2Ref = PlayersRecord.createDoc(gameRef);
 
-    // Add game ID to matchup
-    await matchupRef.update({
+    final batch = _firestore.batch();
+    batch.set(gameRef, gameData);
+    batch.set(
+        player1Ref,
+        createPlayersRecordData(
+          score: score1,
+          deckName: dl1?.archetype ?? dl1?.name ?? 'Unknown',
+          deckRef: deck1Ref,
+          deckId: deck1Id,
+          crewmateId: crewmate1Ref.id,
+          crewId: crewId,
+          crewmateRef: crewmate1Ref,
+        ));
+    batch.set(
+        player2Ref,
+        createPlayersRecordData(
+          score: score2,
+          deckName: dl2?.archetype ?? dl2?.name ?? 'Unknown',
+          deckRef: deck2Ref,
+          deckId: deck2Id,
+          crewmateId: crewmate2Ref.id,
+          crewId: crewId,
+          crewmateRef: crewmate2Ref,
+        ));
+    batch.update(matchupRef, {
       'gameIds': FieldValue.arrayUnion([gameRef.id]),
     });
+    await batch.commit();
+  }
+
+  /// Expand a tournament that was imported player-only by pulling in every
+  /// match in the bracket. Existing matchups are skipped via the natural
+  /// dedup in [_findOrCreateMatchup]; only the missing ones get created.
+  ///
+  /// Returns the number of matches we attempted to import (the dedup happens
+  /// silently inside [_findOrCreateMatchup], so the precise "new vs existing"
+  /// split isn't surfaced — the caller can re-render and Firestore is the
+  /// source of truth).
+  Future<int> expandTournament({
+    required int spicerackEventId,
+    void Function(int current, int total, String status)? onProgress,
+  }) async {
+    onProgress?.call(0, 1, 'Loading tournament data...');
+
+    // 1. Find the existing tournament doc to reuse its crew/org context.
+    final existing = await _firestore
+        .collection('tournaments')
+        .where('spicerackEventId', isEqualTo: spicerackEventId)
+        .limit(1)
+        .get();
+    if (existing.docs.isEmpty) {
+      throw StateError(
+          'Tournament for event $spicerackEventId not yet imported');
+    }
+    final tournamentDoc = existing.docs.first;
+    final tournamentRef = tournamentDoc.reference;
+    final tData = tournamentDoc.data();
+    final crewId = tData['crewId'] as String? ?? '';
+    final orgRef = tData['organizationRef'] as DocumentReference?;
+    final orgId = tData['organizationId'] as String? ?? '';
+    if (crewId.isEmpty || orgRef == null || orgId.isEmpty) {
+      throw StateError('Tournament is missing crew/org metadata');
+    }
+    final crewRef = _firestore.collection('crews').doc(crewId);
+
+    // 2. Reconstruct the SpicerackEvent shell needed by _importMatch.
+    final dateField = tData['date'];
+    DateTime? startDate;
+    if (dateField is Timestamp) startDate = dateField.toDate();
+    final event = SpicerackEvent(
+      id: spicerackEventId,
+      name: tData['name'] as String? ?? '',
+      format: tData['format'] as String? ?? '',
+      startDate: startDate,
+      conventionId: null,
+      conventionName: null,
+      organizerId: 0, // not used downstream
+      organizerName: '',
+    );
+
+    // 3. Fetch the full bracket + registrations + decklists in parallel.
+    final service = SpicerackService();
+    final fetched = await Future.wait([
+      service.getEventDetails(spicerackEventId),
+      service.getEventRegistrations(spicerackEventId),
+      service.getEventDecklists(spicerackEventId),
+    ]);
+    final eventDetail = fetched[0] as Map<String, dynamic>;
+    final registrations = fetched[1] as List<SpicerackRegistration>;
+    final decklists = fetched[2] as Map<int, SpicerackDecklist>;
+    final allMatches = service.parseMatches(eventDetail);
+
+    final allRegs = <int, SpicerackRegistration>{
+      for (final r in registrations) r.userId: r
+    };
+
+    final ones = allMatches.where((m) => m.isOneVsOne).toList();
+    final stopwatch = Stopwatch()..start();
+
+    // 4. Import each match in parallel — _findOrCreateMatchup dedups on
+    //    (matchupId, crewId) so already-imported matches become no-ops.
+    int progress = 0;
+    onProgress?.call(0, ones.length, 'Importing ${ones.length} matches...');
+
+    final futures = ones.map((match) async {
+      try {
+        await _importMatch(
+          match: match,
+          event: event,
+          crewRef: crewRef,
+          crewId: crewId,
+          orgRef: orgRef,
+          orgId: orgId,
+          tournamentRef: tournamentRef,
+          playerUserId: 0, // unused inside _importMatch
+          allRegistrations: allRegs,
+          decklists: decklists,
+        );
+      } catch (e) {
+        print('[ImportV2] expand match failed: $e');
+      } finally {
+        progress++;
+        onProgress?.call(progress, ones.length,
+            'Imported $progress/${ones.length} matches');
+      }
+    }).toList();
+
+    await Future.wait(futures);
+    print('[ImportV2] expandTournament processed ${ones.length} matches '
+        'in ${stopwatch.elapsedMilliseconds}ms');
+    return ones.length;
   }
 
   /// Delete ALL data created by the importer:
@@ -301,10 +419,14 @@ class SpicerackImporter {
   /// - Games referenced by those matchups (and their player sub-docs)
   /// - Tournament documents with a spicerackEventId
   /// User-created matchups/games (no tournamentId) are preserved.
+  ///
+  /// Reads are parallelised; deletes are issued via [WriteBatch] in chunks of
+  /// 500 ops (Firestore's hard cap). This turns hundreds of round-trips into
+  /// a handful of batch commits.
   Future<void> _cleanAllImportedData() async {
-    // 1. Delete all matchups that have a tournamentId set
-    //    (We can't query "where field is not empty", so we query all matchups
-    //    and filter client-side — or we query tournaments first to get all IDs)
+    final stopwatch = Stopwatch()..start();
+
+    // 1. Discover all tournaments to clean.
     final allTournaments = await _firestore
         .collection('tournaments')
         .where('spicerackEventId', isGreaterThan: 0)
@@ -315,83 +437,102 @@ class SpicerackImporter {
       final tid = doc.data()['tournamentId'] as String?;
       if (tid != null && tid.isNotEmpty) tournamentIds.add(tid);
     }
-
-    // Delete matchups for each tournament (batched by whereIn limit of 30)
     final tidList = tournamentIds.toList();
-    for (var i = 0; i < tidList.length; i += 30) {
-      final batch =
-          tidList.sublist(i, i + 30 > tidList.length ? tidList.length : i + 30);
-      final matchups = await _firestore
-          .collection('matchups')
-          .where('tournamentId', whereIn: batch)
-          .get();
 
-      for (final doc in matchups.docs) {
-        // Delete games associated with this matchup
-        final gameIds =
-            (doc.data()['gameIds'] as List?)?.cast<String>() ?? [];
-        for (final gameId in gameIds) {
-          // Delete player sub-docs first
-          final playerDocs = await _firestore
-              .collection('games')
-              .doc(gameId)
-              .collection('players')
-              .get();
-          for (final pDoc in playerDocs.docs) {
-            await pDoc.reference.delete();
-          }
-          await _firestore.collection('games').doc(gameId).delete();
-        }
-        await doc.reference.delete();
-      }
+    // 2. Fetch matchups in parallel (chunked by Firestore's whereIn limit of 30).
+    final matchupChunkFutures = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
+    for (var i = 0; i < tidList.length; i += 30) {
+      final end = i + 30 > tidList.length ? tidList.length : i + 30;
+      matchupChunkFutures.add(_firestore
+          .collection('matchups')
+          .where('tournamentId', whereIn: tidList.sublist(i, end))
+          .get());
     }
 
-    // Also clean up any matchups with old-format matchupId (no tournament prefix)
-    // that might have been created before the fix. These have a tournamentId that
-    // points to one of our known tournaments but might not be found above due to
-    // the cross-contamination bug.
-    // Query matchups that reference any known tournament
-    for (final doc in allTournaments.docs) {
-      final tournamentRef = doc.reference;
-      final orphanedMatchups = await _firestore
-          .collection('matchups')
-          .where('tournamentRef', isEqualTo: tournamentRef)
-          .get();
-      for (final mDoc in orphanedMatchups.docs) {
-        final gameIds =
-            (mDoc.data()['gameIds'] as List?)?.cast<String>() ?? [];
-        for (final gameId in gameIds) {
-          final playerDocs = await _firestore
-              .collection('games')
-              .doc(gameId)
-              .collection('players')
-              .get();
-          for (final pDoc in playerDocs.docs) {
-            await pDoc.reference.delete();
-          }
-          await _firestore.collection('games').doc(gameId).delete();
-        }
-        await mDoc.reference.delete();
-      }
-    }
+    // Also fetch orphaned matchups (referenced by tournamentRef instead of tournamentId).
+    final orphanedFutures = allTournaments.docs.map((doc) => _firestore
+        .collection('matchups')
+        .where('tournamentRef', isEqualTo: doc.reference)
+        .get());
 
-    // 2. Delete tournament-scoped deck snapshots
+    // Decks scoped to those tournaments.
+    final deckChunkFutures = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
     for (var i = 0; i < tidList.length; i += 30) {
-      final batch =
-          tidList.sublist(i, i + 30 > tidList.length ? tidList.length : i + 30);
-      final decks = await _firestore
+      final end = i + 30 > tidList.length ? tidList.length : i + 30;
+      deckChunkFutures.add(_firestore
           .collection('decks')
-          .where('tournamentId', whereIn: batch)
-          .get();
-      for (final doc in decks.docs) {
-        await doc.reference.delete();
+          .where('tournamentId', whereIn: tidList.sublist(i, end))
+          .get());
+    }
+
+    final allReads = await Future.wait<QuerySnapshot<Map<String, dynamic>>>([
+      ...matchupChunkFutures,
+      ...orphanedFutures,
+      ...deckChunkFutures,
+    ]);
+
+    final matchupSnaps = allReads.sublist(0, matchupChunkFutures.length);
+    final orphanedSnaps = allReads.sublist(matchupChunkFutures.length,
+        matchupChunkFutures.length + orphanedFutures.length);
+    final deckSnaps = allReads.sublist(
+        matchupChunkFutures.length + orphanedFutures.length);
+
+    // De-duplicate matchups by reference path (orphaned set may overlap with main set).
+    final matchupDocs = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+    for (final snap in [...matchupSnaps, ...orphanedSnaps]) {
+      for (final doc in snap.docs) {
+        matchupDocs[doc.reference.path] = doc;
       }
     }
 
-    // 3. Delete all tournament documents
-    for (final doc in allTournaments.docs) {
-      await doc.reference.delete();
+    // 3. Collect all game IDs we need to clean up.
+    final gameIds = <String>{};
+    for (final mDoc in matchupDocs.values) {
+      final ids = (mDoc.data()['gameIds'] as List?)?.cast<String>() ?? [];
+      gameIds.addAll(ids);
     }
+
+    // 4. Fetch all player sub-doc collections in parallel — one query per game.
+    final playerSubcolFutures = gameIds.map((gid) =>
+        _firestore.collection('games').doc(gid).collection('players').get());
+    final playerSnaps = await Future.wait(playerSubcolFutures);
+
+    // 5. Build the full delete list, then commit in batches of 500.
+    final deletes = <DocumentReference>[];
+    for (final snap in playerSnaps) {
+      for (final p in snap.docs) {
+        deletes.add(p.reference);
+      }
+    }
+    for (final gid in gameIds) {
+      deletes.add(_firestore.collection('games').doc(gid));
+    }
+    for (final mDoc in matchupDocs.values) {
+      deletes.add(mDoc.reference);
+    }
+    for (final snap in deckSnaps) {
+      for (final d in snap.docs) {
+        deletes.add(d.reference);
+      }
+    }
+    for (final t in allTournaments.docs) {
+      deletes.add(t.reference);
+    }
+
+    // Commit batches in parallel — each Firestore batch handles up to 500 ops.
+    final batchFutures = <Future<void>>[];
+    for (var i = 0; i < deletes.length; i += 500) {
+      final batch = _firestore.batch();
+      final end = i + 500 > deletes.length ? deletes.length : i + 500;
+      for (var j = i; j < end; j++) {
+        batch.delete(deletes[j]);
+      }
+      batchFutures.add(batch.commit());
+    }
+    await Future.wait(batchFutures);
+
+    print('[ImportV2] cleanup deleted ${deletes.length} docs in '
+        '${stopwatch.elapsedMilliseconds}ms');
   }
 
   /// Find or create an organization for the given Spicerack organizer. Uses
@@ -467,11 +608,13 @@ class SpicerackImporter {
       return existing.docs.first.reference;
     }
 
-    // Create new crew
+    // Create new crew — marked isSolo so users know it's an LGS crew,
+    // not a friend crew. They can still create/join a real crew later.
     final crewRef = _firestore.collection('crews').doc();
     await crewRef.set(createCrewsRecordData(
       name: organizerName,
       ref: crewRef,
+      isSolo: true,
     ));
 
     _crewCache[organizerId] = crewRef;
@@ -484,9 +627,16 @@ class SpicerackImporter {
     required String crewId,
     required int spicerackUserId,
     required String name,
+    // Set for the importing user so they appear as a real crew member.
+    DocumentReference? userRef,
   }) async {
     final cacheKey = '${crewId}_$spicerackUserId';
     if (_crewmateCache.containsKey(cacheKey)) {
+      // If we now have a userRef and the cached crewmate doesn't, backfill it.
+      if (userRef != null) {
+        await _crewmateCache[cacheKey]!
+            .set({'userReference': userRef}, SetOptions(merge: true));
+      }
       return _crewmateCache[cacheKey]!;
     }
 
@@ -498,8 +648,12 @@ class SpicerackImporter {
         .get();
 
     if (existing.docs.isNotEmpty) {
-      _crewmateCache[cacheKey] = existing.docs.first.reference;
-      return existing.docs.first.reference;
+      final ref = existing.docs.first.reference;
+      if (userRef != null) {
+        await ref.set({'userReference': userRef}, SetOptions(merge: true));
+      }
+      _crewmateCache[cacheKey] = ref;
+      return ref;
     }
 
     // Create new crewmate
@@ -507,6 +661,7 @@ class SpicerackImporter {
     await crewmateRef.set(createCrewmatesRecordData(
       name: name,
       userId: spicerackUserId.toString(),
+      userReference: userRef,
     ));
 
     _crewmateCache[cacheKey] = crewmateRef;
@@ -700,69 +855,18 @@ class SpicerackImporter {
     return matchupRef;
   }
 
-  /// Create a Player sub-document under a Game.
-  Future<void> _createPlayerDoc({
-    required DocumentReference gameRef,
-    required String crewId,
-    required DocumentReference crewmateRef,
-    required String crewmateId,
-    required DocumentReference deckRef,
-    required String deckId,
-    required String deckName,
-    required int score,
-  }) async {
-    final playerRef = PlayersRecord.createDoc(gameRef);
-    await playerRef.set(createPlayersRecordData(
-      score: score,
-      deckName: deckName,
-      deckRef: deckRef,
-      deckId: deckId,
-      crewmateId: crewmateId,
-      crewId: crewId,
-      crewmateRef: crewmateRef,
-    ));
-  }
-
   /// Set user's crewId to the organizer they played with the most.
   Future<void> _assignUserToMostPlayedCrew() async {
     if (currentUserReference == null) return;
 
-    // Always persist organizationIds — even if nothing new was imported we
-    // want the user marked as member of every org they touched.
+    // Only update the user's org memberships — never touch crewId/crewRef.
+    // The crew is the user's friend group (created manually); orgs are LGS
+    // stores where tournaments happen. Keeping them separate means the
+    // crewmate list and deck list stay clean of tournament opponents.
     if (_orgIdsForUser.isNotEmpty) {
       await currentUserReference!.set({
         'organizationIds': FieldValue.arrayUnion(_orgIdsForUser.toList()),
       }, SetOptions(merge: true));
     }
-
-    if (_organizerEventCount.isEmpty) return;
-
-    // Find organizer with most events
-    int maxCount = 0;
-    int? bestOrganizer;
-    for (final entry in _organizerEventCount.entries) {
-      if (entry.value > maxCount) {
-        maxCount = entry.value;
-        bestOrganizer = entry.key;
-      }
-    }
-
-    if (bestOrganizer == null || !_crewCache.containsKey(bestOrganizer)) return;
-
-    final crewRef = _crewCache[bestOrganizer]!;
-    final crewId = crewRef.id;
-
-    // Find the user's crewmate in this crew
-    final crewmateKey = _crewmateCache.keys.where((k) => k.startsWith('${crewId}_'));
-    DocumentReference? crewmateRef;
-    if (crewmateKey.isNotEmpty) {
-      crewmateRef = _crewmateCache[crewmateKey.first];
-    }
-
-    await currentUserReference!.set({
-      'crewId': crewId,
-      'crewRef': crewRef,
-      if (crewmateRef != null) 'crewmateRef': crewmateRef,
-    }, SetOptions(merge: true));
   }
 }

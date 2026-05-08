@@ -190,7 +190,44 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           name: 'onboar',
           path: '/onboar',
           builder: (context, params) => OnboarWidget(),
-        )
+        ),
+        FFRoute(
+          name: 'SpicerackImport',
+          path: '/spicerackImport',
+          builder: (context, params) => SpicerackImportWidget(),
+        ),
+        FFRoute(
+          name: 'TournamentList',
+          path: '/tournamentList',
+          requireAuth: true,
+          builder: (context, params) => TournamentListWidget(),
+        ),
+        FFRoute(
+          name: 'TournamentDetail',
+          path: '/tournamentDetail',
+          requireAuth: true,
+          builder: (context, params) => TournamentDetailWidget(
+            tournamentId:
+                params.getParam('tournamentId', ParamType.String),
+          ),
+        ),
+        FFRoute(
+          name: 'OrganizationList',
+          path: '/organizationList',
+          requireAuth: true,
+          builder: (context, params) => OrganizationListWidget(),
+        ),
+        FFRoute(
+          name: 'OrganizationDetail',
+          path: '/organizationDetail',
+          requireAuth: true,
+          builder: (context, params) => OrganizationDetailWidget(
+            organizationId:
+                params.getParam('organizationId', ParamType.String),
+            organizationPath:
+                params.getParam('organizationPath', ParamType.String),
+          ),
+        ),
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
       observers: [routeObserver],
     );

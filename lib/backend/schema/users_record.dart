@@ -71,6 +71,21 @@ class UsersRecord extends FirestoreRecord {
   DocumentReference? get crewmateRef => _crewmateRef;
   bool hasCrewmateRef() => _crewmateRef != null;
 
+  // "organizationIds" field. Denormalized membership for whereIn queries.
+  List<String>? _organizationIds;
+  List<String> get organizationIds => _organizationIds ?? const [];
+  bool hasOrganizationIds() => _organizationIds != null;
+
+  // "isSoloCrew" field. True when the user's crew was auto-created during a
+  // Spicerack import (no teammates yet). Checked in the UI to show the
+  // "Join / Create a crew" prompt and hide crew-specific features.
+  bool? _isSoloCrew;
+  bool get isSoloCrew => _isSoloCrew ?? false;
+  bool hasIsSoloCrew() => _isSoloCrew != null;
+
+  // Convenience: true when the user is in a real (non-solo) crew.
+  bool get hasRealCrew => crewId.isNotEmpty && !isSoloCrew;
+
   void _initializeFields() {
     _name = snapshotData['name'] as String?;
     _crewId = snapshotData['crewId'] as String?;
@@ -83,6 +98,8 @@ class UsersRecord extends FirestoreRecord {
     _phoneNumber = snapshotData['phone_number'] as String?;
     _deckIds = getDataList(snapshotData['deckIds']);
     _crewmateRef = snapshotData['crewmateRef'] as DocumentReference?;
+    _organizationIds = getDataList(snapshotData['organizationIds']);
+    _isSoloCrew = snapshotData['isSoloCrew'] as bool?;
   }
 
   static CollectionReference get collection =>
@@ -129,6 +146,7 @@ Map<String, dynamic> createUsersRecordData({
   DateTime? createdTime,
   String? phoneNumber,
   DocumentReference? crewmateRef,
+  bool? isSoloCrew,
 }) {
   final firestoreData = mapToFirestore(
     <String, dynamic>{
@@ -142,6 +160,7 @@ Map<String, dynamic> createUsersRecordData({
       'created_time': createdTime,
       'phone_number': phoneNumber,
       'crewmateRef': crewmateRef,
+      'isSoloCrew': isSoloCrew,
     }.withoutNulls,
   );
 
@@ -164,7 +183,8 @@ class UsersRecordDocumentEquality implements Equality<UsersRecord> {
         e1?.createdTime == e2?.createdTime &&
         e1?.phoneNumber == e2?.phoneNumber &&
         listEquality.equals(e1?.deckIds, e2?.deckIds) &&
-        e1?.crewmateRef == e2?.crewmateRef;
+        e1?.crewmateRef == e2?.crewmateRef &&
+        listEquality.equals(e1?.organizationIds, e2?.organizationIds);
   }
 
   @override
@@ -179,7 +199,8 @@ class UsersRecordDocumentEquality implements Equality<UsersRecord> {
         e?.createdTime,
         e?.phoneNumber,
         e?.deckIds,
-        e?.crewmateRef
+        e?.crewmateRef,
+        e?.organizationIds,
       ]);
 
   @override

@@ -51,6 +51,26 @@ class GamesRecord extends FirestoreRecord {
   DocumentReference? get matchupRef => _matchupRef;
   bool hasMatchupRef() => _matchupRef != null;
 
+  // "organizationRef" field.
+  DocumentReference? _organizationRef;
+  DocumentReference? get organizationRef => _organizationRef;
+  bool hasOrganizationRef() => _organizationRef != null;
+
+  // "organizationId" field.
+  String? _organizationId;
+  String get organizationId => _organizationId ?? '';
+  bool hasOrganizationId() => _organizationId != null;
+
+  // "tournamentRef" field. Set when game is part of an imported tournament.
+  DocumentReference? _tournamentRef;
+  DocumentReference? get tournamentRef => _tournamentRef;
+  bool hasTournamentRef() => _tournamentRef != null;
+
+  // "tournamentId" field.
+  String? _tournamentId;
+  String get tournamentId => _tournamentId ?? '';
+  bool hasTournamentId() => _tournamentId != null;
+
   void _initializeFields() {
     _date = snapshotData['date'] as DateTime?;
     _docReference = snapshotData['docReference'] as DocumentReference?;
@@ -59,6 +79,10 @@ class GamesRecord extends FirestoreRecord {
     _gameId = snapshotData['gameId'] as String?;
     _matchupId = snapshotData['matchupId'] as String?;
     _matchupRef = snapshotData['matchupRef'] as DocumentReference?;
+    _organizationRef = snapshotData['organizationRef'] as DocumentReference?;
+    _organizationId = snapshotData['organizationId'] as String?;
+    _tournamentRef = snapshotData['tournamentRef'] as DocumentReference?;
+    _tournamentId = snapshotData['tournamentId'] as String?;
   }
 
   static CollectionReference get collection =>
@@ -101,6 +125,10 @@ Map<String, dynamic> createGamesRecordData({
   String? gameId,
   String? matchupId,
   DocumentReference? matchupRef,
+  DocumentReference? organizationRef,
+  String? organizationId,
+  DocumentReference? tournamentRef,
+  String? tournamentId,
 }) {
   final firestoreData = mapToFirestore(
     <String, dynamic>{
@@ -110,6 +138,10 @@ Map<String, dynamic> createGamesRecordData({
       'gameId': gameId,
       'matchupId': matchupId,
       'matchupRef': matchupRef,
+      'organizationRef': organizationRef,
+      'organizationId': organizationId,
+      'tournamentRef': tournamentRef,
+      'tournamentId': tournamentId,
     }.withoutNulls,
   );
 
@@ -128,7 +160,11 @@ class GamesRecordDocumentEquality implements Equality<GamesRecord> {
         listEquality.equals(e1?.deckIds, e2?.deckIds) &&
         e1?.gameId == e2?.gameId &&
         e1?.matchupId == e2?.matchupId &&
-        e1?.matchupRef == e2?.matchupRef;
+        e1?.matchupRef == e2?.matchupRef &&
+        e1?.organizationRef == e2?.organizationRef &&
+        e1?.organizationId == e2?.organizationId &&
+        e1?.tournamentRef == e2?.tournamentRef &&
+        e1?.tournamentId == e2?.tournamentId;
   }
 
   @override
@@ -139,7 +175,11 @@ class GamesRecordDocumentEquality implements Equality<GamesRecord> {
         e?.deckIds,
         e?.gameId,
         e?.matchupId,
-        e?.matchupRef
+        e?.matchupRef,
+        e?.organizationRef,
+        e?.organizationId,
+        e?.tournamentRef,
+        e?.tournamentId,
       ]);
 
   @override

@@ -15,10 +15,18 @@ class ScryfallIlluByNameCall {
   }) async {
     return ApiManager.instance.makeApiCall(
       callName: 'Scryfall illu by name',
+      // (name:"..." OR foreign:"...") searches English AND foreign names so
+      // both "Reanimate" and "Réanimation" find the same card.
+      // include_multilingual=true returns FR/EN/etc. printings.
+      // unique=art deduplicates so we get one entry per distinct artwork.
+      // Scryfall requires User-Agent + Accept headers on every request.
       apiUrl:
-          'https://api.scryfall.com/cards/search?q=${cardName}&include_multilingual=true&unique=art',
+          'https://api.scryfall.com/cards/search?q=name%3A%22${Uri.encodeQueryComponent(cardName ?? '')}%22&include_multilingual=true&unique=art&order=edhrec',
       callType: ApiCallType.GET,
-      headers: {},
+      headers: {
+        'User-Agent': 'MFGApp/1.0',
+        'Accept': 'application/json',
+      },
       params: {},
       returnBody: true,
       encodeBodyUtf8: false,

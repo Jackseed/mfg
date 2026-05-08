@@ -5,17 +5,65 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
 import '/flutter_flow/form_field_controller.dart';
-import '/flutter_flow/custom_functions.dart' as functions;
-import 'package:auto_size_text/auto_size_text.dart';
+import '/flutter_flow/custom_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'b3_matchup_list_model.dart';
 export 'b3_matchup_list_model.dart';
+
+// ─── Data classes ────────────────────────────────────────────────────────────
+
+class _MatchupPageData {
+  final List<DecksRecord> decks;
+  final Map<String, DecksRecord> deckMap;
+  final Map<String, String> crewmateNameMap;
+  final Set<String> myDeckIds;
+  final Map<String, DateTime> matchupDateMap;
+
+  const _MatchupPageData({
+    required this.decks,
+    required this.deckMap,
+    required this.crewmateNameMap,
+    required this.myDeckIds,
+    required this.matchupDateMap,
+  });
+}
+
+/// Aggregate for one archetype-pair (my archetype vs opponent archetype).
+class _ArchetypeAgg {
+  final String myArchetype;
+  final String oppArchetype;
+  DecksRecord? myRepDeck;
+  DecksRecord? oppRepDeck;
+  int wins = 0;
+  int losses = 0;
+  int draws = 0;
+  final List<MatchupsRecord> matchups = [];
+
+  _ArchetypeAgg(this.myArchetype, this.oppArchetype);
+
+  int get total => wins + losses + draws;
+}
+
+/// Aggregate for one opponent player.
+class _PlayerAgg {
+  final String crewmateId;
+  final String playerName;
+  int wins = 0;
+  int losses = 0;
+  int draws = 0;
+  final List<MatchupsRecord> matchups = [];
+
+  _PlayerAgg(this.crewmateId, this.playerName);
+
+  int get total => wins + losses + draws;
+}
+
+// ─── Widget ──────────────────────────────────────────────────────────────────
 
 class B3MatchupListWidget extends StatefulWidget {
   const B3MatchupListWidget({
@@ -29,732 +77,1171 @@ class B3MatchupListWidget extends StatefulWidget {
   _B3MatchupListWidgetState createState() => _B3MatchupListWidgetState();
 }
 
-class _B3MatchupListWidgetState extends State<B3MatchupListWidget> {
+class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
+    with TickerProviderStateMixin {
   late B3MatchupListModel _model;
-
   final scaffoldKey = GlobalKey<ScaffoldState>();
+
+  late TabController _tabController;
+
+  // Drill-down state
+  _ArchetypeAgg? _selectedArchetype;
+  _PlayerAgg? _selectedPlayer;
+
+  // Page-data cache
+  String? _lastCrewId;
+  String? _lastCrewmateId;
+  Future<_MatchupPageData>? _pageDataFuture;
+
+  static final _colorIcons = {
+    'W': FFIcons.kwhite,
+    'U': FFIcons.kblue,
+    'B': FFIcons.kblack,
+    'R': FFIcons.kred,
+    'G': FFIcons.kgreen,
+  };
 
   @override
   void initState() {
     super.initState();
     _model = createModel(context, () => B3MatchupListModel());
-
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _selectedArchetype = null;
+          _selectedPlayer = null;
+        });
+      }
+    });
     logFirebaseEvent('screen_view',
         parameters: {'screen_name': 'B3_MatchupList'});
-    // On page load action.
-    SchedulerBinding.instance.addPostFrameCallback((_) async {
-      logFirebaseEvent('B3_MATCHUP_LIST_B3_MatchupList_ON_INIT_S');
-      logFirebaseEvent('B3_MatchupList_update_page_state');
+    SchedulerBinding.instance.addPostFrameCallback((_) {
       setState(() {
         _model.isDeckFilterOpen = false;
-        _model.filteredDeckList = ['demigod'].toList().cast<String>();
+        _model.filteredDeckList = <String>[];
       });
     });
-
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _model.dispose();
-
     super.dispose();
   }
+
+  // ─── Data loading ───────────────────────────────────────────────────────────
+
+  Future<_MatchupPageData> _getPageData(String crewId, String? crewmateId) {
+    if (_pageDataFuture == null ||
+        crewId != _lastCrewId ||
+        crewmateId != _lastCrewmateId) {
+      _lastCrewId = crewId;
+      _lastCrewmateId = crewmateId;
+      _pageDataFuture = _loadPageData(crewId, crewmateId);
+    }
+    return _pageDataFuture!;
+  }
+
+  Future<_MatchupPageData> _loadPageData(
+      String crewId, String? myCrewmateId) async {
+    // For org-only users (no personal crew), discover their crewmate IDs and
+    // the parent crew IDs via userReference collection-group query.
+    Set<String> myCrewmateIds = myCrewmateId != null ? {myCrewmateId} : {};
+    Set<String> myOrgCrewIds = {};
+    if (crewId.isEmpty && currentUserReference != null) {
+      try {
+        final snap = await FirebaseFirestore.instance
+            .collectionGroup('crewmates')
+            .where('userReference', isEqualTo: currentUserReference)
+            .get();
+        myCrewmateIds = snap.docs.map((d) => d.id).toSet();
+        // Extract parent crew IDs (the org-crew containers created by import).
+        myOrgCrewIds = snap.docs.map((d) => d.reference.parent.parent!.id).toSet();
+      } catch (_) {}
+    }
+
+    List<DecksRecord> decks;
+    if (crewId.isNotEmpty) {
+      decks = await queryDecksRecordOnce(
+        queryBuilder: (q) =>
+            q.where('crewId', isEqualTo: crewId).orderBy('name'),
+      );
+    } else if (myOrgCrewIds.isNotEmpty) {
+      // Fetch ALL decks from the user's org-crews (includes opponents) so
+      // deck names resolve correctly in matchup cards.
+      final results = await Future.wait(
+        myOrgCrewIds.take(10).map((cid) => queryDecksRecordOnce(
+              queryBuilder: (q) => q.where('crewId', isEqualTo: cid),
+            )),
+      );
+      decks = results.expand((l) => l).toList();
+    } else {
+      decks = [];
+    }
+
+    final deckMap = <String, DecksRecord>{};
+    for (final d in decks) {
+      if (d.deckId.isNotEmpty) deckMap[d.deckId] = d;
+      // Also key by Firestore document ID so that old matchups whose
+      // scores.deckId stored the document ID (not the UUID) still resolve.
+      deckMap[d.reference.id] = d;
+    }
+
+    final refs = decks
+        .where((d) => d.hasCrewmateRef())
+        .map((d) => d.crewmateRef!)
+        .toSet();
+    final crewmateNameMap = <String, String>{};
+    if (refs.isNotEmpty) {
+      final docs = await Future.wait(refs.map((r) => r.get()));
+      for (final doc in docs) {
+        final name =
+            (doc.data() as Map<String, dynamic>?)?['name'] as String?;
+        if (name != null && name.isNotEmpty) crewmateNameMap[doc.id] = name;
+      }
+    }
+
+    final myDeckIds = <String>{};
+    for (final d in decks) {
+      if (myCrewmateIds.contains(d.crewmateId) && d.deckId.isNotEmpty) {
+        myDeckIds.add(d.deckId);
+      }
+    }
+
+    final games = await queryGamesRecordOnce(
+      queryBuilder: (q) => crewId.isNotEmpty
+          ? q.where('crewId', isEqualTo: crewId)
+          : q.where('crewmateId',
+              whereIn: myCrewmateIds.isEmpty
+                  ? ['___no_match___']
+                  : myCrewmateIds.take(30).toList()),
+    );
+    final matchupDateMap = <String, DateTime>{};
+    for (final g in games) {
+      if (g.matchupId.isEmpty || g.date == null) continue;
+      final existing = matchupDateMap[g.matchupId];
+      if (existing == null || g.date!.isAfter(existing)) {
+        matchupDateMap[g.matchupId] = g.date!;
+      }
+    }
+
+    return _MatchupPageData(
+      decks: decks,
+      deckMap: deckMap,
+      crewmateNameMap: crewmateNameMap,
+      myDeckIds: myDeckIds,
+      matchupDateMap: matchupDateMap,
+    );
+  }
+
+  // ─── Aggregation helpers ─────────────────────────────────────────────────────
+
+  String _deckLabel(DecksRecord? deck) {
+    if (deck == null) return 'Unknown';
+    if (deck.avatarName.isNotEmpty) return deck.avatarName;
+    if (deck.name.isNotEmpty) return deck.name;
+    return 'Unknown';
+  }
+
+  /// Sort: newest first, then round descending.
+  List<MatchupsRecord> _sorted(
+      List<MatchupsRecord> raw, _MatchupPageData data) {
+    return [...raw]
+      ..sort((a, b) {
+        final da = data.matchupDateMap[a.matchupId];
+        final db = data.matchupDateMap[b.matchupId];
+        if (da == null && db == null) return b.round.compareTo(a.round);
+        if (da == null) return 1;
+        if (db == null) return -1;
+        final cmp = db.compareTo(da);
+        return cmp != 0 ? cmp : b.round.compareTo(a.round);
+      });
+  }
+
+  int? _userResult(MatchupsRecord m, Set<String> myDeckIds) {
+    if (m.scores.length < 2) return null;
+    final s1 = m.scores.first;
+    final s2 = m.scores.last;
+    int my, opp;
+    if (myDeckIds.contains(s1.deckId)) {
+      my = s1.score;
+      opp = s2.score;
+    } else if (myDeckIds.contains(s2.deckId)) {
+      my = s2.score;
+      opp = s1.score;
+    } else {
+      return null;
+    }
+    if (my > opp) return 1;
+    if (my < opp) return -1;
+    return 0;
+  }
+
+  List<_ArchetypeAgg> _computeArchetypeAggs(
+      List<MatchupsRecord> matchups, _MatchupPageData data) {
+    final map = <String, _ArchetypeAgg>{};
+    for (final m in matchups) {
+      if (m.scores.length < 2) continue;
+      final s1 = m.scores.first;
+      final s2 = m.scores.last;
+      final bool mine1 = data.myDeckIds.contains(s1.deckId);
+      final bool mine2 = data.myDeckIds.contains(s2.deckId);
+      if (!mine1 && !mine2) continue;
+
+      final myScore = mine1 ? s1 : s2;
+      final oppScore = mine1 ? s2 : s1;
+      final myDeck = data.deckMap[myScore.deckId];
+      final oppDeck = data.deckMap[oppScore.deckId];
+
+      final myArch = _deckLabel(myDeck);
+      final oppArch = _deckLabel(oppDeck);
+      final key = '$myArch\x00$oppArch';
+
+      final agg = map.putIfAbsent(key, () => _ArchetypeAgg(myArch, oppArch));
+      agg.myRepDeck ??= myDeck;
+      agg.oppRepDeck ??= oppDeck;
+      agg.matchups.add(m);
+
+      final r = myScore.score.compareTo(oppScore.score);
+      if (r > 0) agg.wins++;
+      else if (r < 0) agg.losses++;
+      else agg.draws++;
+    }
+    double ratio(_ArchetypeAgg a) =>
+        a.total == 0 ? 0 : a.wins / a.total;
+    return map.values.toList()
+      ..sort((a, b) {
+        final cmp = ratio(b).compareTo(ratio(a));
+        return cmp != 0 ? cmp : b.total.compareTo(a.total);
+      });
+  }
+
+  List<_PlayerAgg> _computePlayerAggs(
+      List<MatchupsRecord> matchups, _MatchupPageData data) {
+    final map = <String, _PlayerAgg>{};
+    for (final m in matchups) {
+      if (m.scores.length < 2) continue;
+      final s1 = m.scores.first;
+      final s2 = m.scores.last;
+      final bool mine1 = data.myDeckIds.contains(s1.deckId);
+      final bool mine2 = data.myDeckIds.contains(s2.deckId);
+      if (!mine1 && !mine2) continue;
+
+      final myScore = mine1 ? s1 : s2;
+      final oppScore = mine1 ? s2 : s1;
+      final oppDeck = data.deckMap[oppScore.deckId];
+      final oppCrewmateId = oppDeck?.crewmateId ?? '';
+      final oppName =
+          data.crewmateNameMap[oppCrewmateId] ?? 'Unknown';
+
+      final key = oppCrewmateId.isNotEmpty ? oppCrewmateId : oppName;
+      final agg =
+          map.putIfAbsent(key, () => _PlayerAgg(oppCrewmateId, oppName));
+      agg.matchups.add(m);
+
+      final r = myScore.score.compareTo(oppScore.score);
+      if (r > 0) agg.wins++;
+      else if (r < 0) agg.losses++;
+      else agg.draws++;
+    }
+    double ratio(_PlayerAgg a) =>
+        a.total == 0 ? 0 : a.wins / a.total;
+    return map.values.toList()
+      ..sort((a, b) {
+        final cmp = ratio(b).compareTo(ratio(a));
+        return cmp != 0 ? cmp : b.total.compareTo(a.total);
+      });
+  }
+
+  // ─── Avatar helpers ──────────────────────────────────────────────────────────
+
+  Widget _buildColorIconsOrInitials(
+      BuildContext context, String name, List<String> colors) {
+    if (colors.isEmpty) return _buildInitialsAvatar(context, name);
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: FlutterFlowTheme.of(context).primary.withOpacity(0.6),
+        border: Border.all(
+          color: FlutterFlowTheme.of(context).primaryText.withOpacity(0.2),
+        ),
+      ),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: colors.take(3).map((c) {
+            final icon = _colorIcons[c.toUpperCase()];
+            if (icon != null) {
+              return Icon(icon,
+                  size: 10,
+                  color: FlutterFlowTheme.of(context).primaryText);
+            }
+            return const SizedBox.shrink();
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitialsAvatar(BuildContext context, String name) {
+    final initials = name.isNotEmpty
+        ? name
+            .split(' ')
+            .where((w) => w.isNotEmpty)
+            .take(2)
+            .map((w) => w[0].toUpperCase())
+            .join()
+        : '?';
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: FlutterFlowTheme.of(context).primary.withOpacity(0.6),
+        border: Border.all(
+          color: FlutterFlowTheme.of(context).primaryText.withOpacity(0.2),
+        ),
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: TextStyle(
+            fontFamily: 'Cinzel Decorative',
+            color: FlutterFlowTheme.of(context).primaryText,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _deckAvatar(BuildContext context, DecksRecord? deck, String label) {
+    final colors = deck?.colors ?? [];
+    final hasAvatar = deck != null && deck.avatarUrl.isNotEmpty;
+    if (hasAvatar) {
+      return Container(
+        width: 36,
+        height: 36,
+        clipBehavior: Clip.antiAlias,
+        decoration: const BoxDecoration(shape: BoxShape.circle),
+        child: CachedNetworkImage(
+          imageUrl: deck.avatarUrl,
+          fit: BoxFit.cover,
+          placeholder: (ctx, _) => _buildInitialsAvatar(ctx, label),
+          errorWidget: (ctx, _, __) =>
+              _buildColorIconsOrInitials(ctx, label, colors),
+        ),
+      );
+    }
+    if (colors.isNotEmpty) {
+      return _buildColorIconsOrInitials(context, label, colors);
+    }
+    return _buildInitialsAvatar(context, label);
+  }
+
+  // ─── Matchup card (shared across all tabs) ───────────────────────────────────
+
+  Widget _buildMatchupCard(
+      BuildContext context, MatchupsRecord matchup, _MatchupPageData data) {
+    if (matchup.scores.length < 2) return const SizedBox.shrink();
+    final s1 = matchup.scores.first;
+    final s2 = matchup.scores.last;
+    final deck1 = data.deckMap[s1.deckId];
+    final deck2 = data.deckMap[s2.deckId];
+    final player1 = deck1 != null ? data.crewmateNameMap[deck1.crewmateId] : null;
+    final player2 = deck2 != null ? data.crewmateNameMap[deck2.crewmateId] : null;
+
+    final result = _userResult(matchup, data.myDeckIds);
+    final resultColor = result == null
+        ? const Color(0xFF95A5A6)
+        : result > 0
+            ? const Color(0xFF2ECC71)
+            : result < 0
+                ? const Color(0xFFE74C3C)
+                : const Color(0xFFF1C40F);
+    final resultText = result == null
+        ? '—'
+        : result > 0
+            ? 'WIN'
+            : result < 0
+                ? 'LOSS'
+                : 'DRAW';
+
+    return InkWell(
+      onTap: () {
+        logFirebaseEvent('B3_MATCHUP_LIST_PAGE_GameItem_ON_TAP');
+        context.pushNamed('B4_MatchupView', queryParameters: {
+          'matchupId': serializeParam(matchup.matchupId, ParamType.String),
+        }.withoutNulls);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: FlutterFlowTheme.of(context).primary.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: resultColor.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: resultColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(resultText,
+                  style: TextStyle(
+                    fontFamily: 'Noto Sans',
+                    color: resultColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  )),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                    child: _buildPlayerSide(context, deck1, s1.score,
+                        isLeft: true, playerName: player1)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('VS',
+                      style: FlutterFlowTheme.of(context).bodySmall.override(
+                            fontFamily: 'Cinzel Decorative',
+                            color: FlutterFlowTheme.of(context)
+                                .primaryText
+                                .withOpacity(0.4),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          )),
+                ),
+                Expanded(
+                    child: _buildPlayerSide(context, deck2, s2.score,
+                        isLeft: false, playerName: player2)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayerSide(
+    BuildContext context,
+    DecksRecord? deck,
+    int score, {
+    required bool isLeft,
+    String? playerName,
+  }) {
+    final label = _deckLabel(deck);
+    final colors = deck?.colors ?? [];
+
+    final avatar = _deckAvatar(context, deck, label);
+
+    final scoreWidget = Text('$score',
+        style: FlutterFlowTheme.of(context).headlineSmall.override(
+              fontFamily: 'Cinzel Decorative',
+              color: FlutterFlowTheme.of(context).primaryText,
+              fontSize: 24,
+            ));
+
+    final nameWidget = Text(label,
+        style: FlutterFlowTheme.of(context).bodyMedium.override(
+              fontFamily: 'Noto Sans',
+              color: FlutterFlowTheme.of(context).primaryText,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: isLeft ? TextAlign.left : TextAlign.right);
+
+    Widget colorRow = const SizedBox.shrink();
+    if (colors.isNotEmpty) {
+      colorRow = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: colors.map((c) {
+          final icon = _colorIcons[c.toUpperCase()];
+          return icon != null
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 2),
+                  child: Icon(icon,
+                      size: 12,
+                      color: FlutterFlowTheme.of(context)
+                          .primaryText
+                          .withOpacity(0.7)),
+                )
+              : const SizedBox.shrink();
+        }).toList(),
+      );
+    }
+
+    Widget? playerWidget;
+    if (playerName != null && playerName.isNotEmpty) {
+      playerWidget = Text(playerName,
+          style: FlutterFlowTheme.of(context).bodySmall.override(
+                fontFamily: 'Noto Sans',
+                color: FlutterFlowTheme.of(context)
+                    .primaryText
+                    .withOpacity(0.5),
+                fontSize: 10,
+              ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: isLeft ? TextAlign.left : TextAlign.right);
+    }
+
+    if (isLeft) {
+      return Row(children: [
+        avatar,
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (playerWidget != null) playerWidget,
+              nameWidget,
+              const SizedBox(height: 2),
+              colorRow,
+            ],
+          ),
+        ),
+        const SizedBox(width: 4),
+        scoreWidget,
+      ]);
+    } else {
+      return Row(children: [
+        scoreWidget,
+        const SizedBox(width: 4),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (playerWidget != null) playerWidget,
+              nameWidget,
+              const SizedBox(height: 2),
+              Align(alignment: Alignment.centerRight, child: colorRow),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        avatar,
+      ]);
+    }
+  }
+
+  // ─── Archetype agg card ──────────────────────────────────────────────────────
+
+  Widget _buildArchetypeAggCard(
+      BuildContext context, _ArchetypeAgg agg, _MatchupPageData data) {
+    final resultColor = agg.wins > agg.losses
+        ? const Color(0xFF2ECC71)
+        : agg.wins < agg.losses
+            ? const Color(0xFFE74C3C)
+            : const Color(0xFFF1C40F);
+
+    return InkWell(
+      onTap: () => setState(() => _selectedArchetype = agg),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: FlutterFlowTheme.of(context).primary.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: resultColor.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            // Record badge
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: resultColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '${agg.wins}W · ${agg.losses}L${agg.draws > 0 ? ' · ${agg.draws}D' : ''}',
+                style: TextStyle(
+                  fontFamily: 'Noto Sans',
+                  color: resultColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Archetype vs
+            Row(
+              children: [
+                Expanded(
+                    child: _buildArchetypeSide(
+                        context, agg.myArchetype, agg.myRepDeck,
+                        isLeft: true)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('VS',
+                      style: FlutterFlowTheme.of(context).bodySmall.override(
+                            fontFamily: 'Cinzel Decorative',
+                            color: FlutterFlowTheme.of(context)
+                                .primaryText
+                                .withOpacity(0.4),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          )),
+                ),
+                Expanded(
+                    child: _buildArchetypeSide(
+                        context, agg.oppArchetype, agg.oppRepDeck,
+                        isLeft: false)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${agg.total} ${agg.total == 1 ? "matchup" : "matchups"}',
+              style: TextStyle(
+                fontFamily: 'Noto Sans',
+                color: FlutterFlowTheme.of(context)
+                    .primaryText
+                    .withOpacity(0.4),
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArchetypeSide(
+      BuildContext context, String label, DecksRecord? deck,
+      {required bool isLeft}) {
+    final colors = deck?.colors ?? [];
+    final avatar = _deckAvatar(context, deck, label);
+    final nameWidget = Text(
+      label,
+      style: FlutterFlowTheme.of(context).bodyMedium.override(
+            fontFamily: 'Noto Sans',
+            color: FlutterFlowTheme.of(context).primaryText,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: isLeft ? TextAlign.left : TextAlign.right,
+    );
+    Widget colorRow = const SizedBox.shrink();
+    if (colors.isNotEmpty) {
+      colorRow = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: colors.map((c) {
+          final icon = _colorIcons[c.toUpperCase()];
+          return icon != null
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 2),
+                  child: Icon(icon,
+                      size: 12,
+                      color: FlutterFlowTheme.of(context)
+                          .primaryText
+                          .withOpacity(0.7)),
+                )
+              : const SizedBox.shrink();
+        }).toList(),
+      );
+    }
+
+    if (isLeft) {
+      return Row(children: [
+        avatar,
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              nameWidget,
+              const SizedBox(height: 2),
+              colorRow,
+            ],
+          ),
+        ),
+      ]);
+    } else {
+      return Row(children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              nameWidget,
+              const SizedBox(height: 2),
+              Align(alignment: Alignment.centerRight, child: colorRow),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        avatar,
+      ]);
+    }
+  }
+
+  // ─── Player agg card ─────────────────────────────────────────────────────────
+
+  Widget _buildPlayerAggCard(BuildContext context, _PlayerAgg agg) {
+    final resultColor = agg.wins > agg.losses
+        ? const Color(0xFF2ECC71)
+        : agg.wins < agg.losses
+            ? const Color(0xFFE74C3C)
+            : const Color(0xFFF1C40F);
+
+    return InkWell(
+      onTap: () => setState(() => _selectedPlayer = agg),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: FlutterFlowTheme.of(context).primary.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: resultColor.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            _buildInitialsAvatar(context, agg.playerName),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    agg.playerName,
+                    style: FlutterFlowTheme.of(context).bodyMedium.override(
+                          fontFamily: 'Noto Sans',
+                          color: FlutterFlowTheme.of(context).primaryText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${agg.total} ${agg.total == 1 ? "matchup" : "matchups"}',
+                    style: TextStyle(
+                      fontFamily: 'Noto Sans',
+                      color: FlutterFlowTheme.of(context)
+                          .primaryText
+                          .withOpacity(0.4),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: resultColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '${agg.wins}-${agg.losses}${agg.draws > 0 ? '-${agg.draws}' : ''}',
+                style: TextStyle(
+                  fontFamily: 'Noto Sans',
+                  color: resultColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right,
+                color: FlutterFlowTheme.of(context)
+                    .primaryText
+                    .withOpacity(0.3),
+                size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Empty state ─────────────────────────────────────────────────────────────
+
+  Widget _buildEmptyState(BuildContext context, {String? message}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(28, 0, 28, 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(FFIcons.kred,
+                color: FlutterFlowTheme.of(context).secondaryText, size: 80),
+            const SizedBox(height: 20),
+            Text(
+              message ?? FFLocalizations.of(context).getText('wxo7v8rv'),
+              textAlign: TextAlign.center,
+              style: FlutterFlowTheme.of(context).titleMedium.override(
+                    fontFamily: 'Cinzel Decorative',
+                    color: FlutterFlowTheme.of(context).primaryText,
+                    fontSize: 20,
+                    fontWeight: FontWeight.normal,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Tab bodies ──────────────────────────────────────────────────────────────
+
+  Widget _buildPartiesTab(
+      BuildContext context,
+      List<MatchupsRecord> allMatchups,
+      _MatchupPageData data,
+      List<String> deckNames) {
+    // Apply deck filter client-side
+    final selectedDeckIds = data.decks
+        .where((d) =>
+            _model.checkboxGroupValues != null &&
+            _model.checkboxGroupValues!.contains(d.name))
+        .map((d) => d.deckId)
+        .where((id) => id.isNotEmpty)
+        .toSet();
+
+    final matchups = _sorted(
+      selectedDeckIds.isEmpty
+          ? allMatchups
+          : allMatchups
+              .where((m) => m.deckIds.any((id) => selectedDeckIds.contains(id)))
+              .toList(),
+      data,
+    );
+
+    return Stack(
+      children: [
+        if (matchups.isEmpty)
+          _buildEmptyState(context)
+        else
+          ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 72, 16, 110),
+            itemCount: matchups.length,
+            itemBuilder: (ctx, i) => _buildMatchupCard(ctx, matchups[i], data),
+          ),
+        // Filter overlay
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FFButtonWidget(
+                onPressed: () => setState(
+                    () => _model.isDeckFilterOpen = !_model.isDeckFilterOpen),
+                text: FFLocalizations.of(context).getText('f5s9h70j'),
+                icon: const Icon(Icons.filter_list, size: 15),
+                options: FFButtonOptions(
+                  width: 150,
+                  height: 50,
+                  padding: EdgeInsetsDirectional.zero,
+                  iconPadding: EdgeInsetsDirectional.zero,
+                  color: const Color(0xFF645D5D),
+                  textStyle:
+                      FlutterFlowTheme.of(context).titleSmall.override(
+                            fontFamily: 'Cinzel Decorative',
+                            color: Colors.white,
+                            fontSize: 18,
+                          ),
+                  elevation: 3,
+                  borderSide:
+                      const BorderSide(color: Colors.transparent, width: 1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              if (_model.isDeckFilterOpen)
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF645D5D),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: FlutterFlowCheckboxGroup(
+                      options: deckNames,
+                      onChanged: (val) =>
+                          setState(() => _model.checkboxGroupValues = val),
+                      controller: _model.checkboxGroupValueController ??=
+                          FormFieldController<List<String>>([]),
+                      activeColor: FlutterFlowTheme.of(context).tertiary,
+                      checkColor: FlutterFlowTheme.of(context).primary,
+                      checkboxBorderColor:
+                          FlutterFlowTheme.of(context).tertiary,
+                      textStyle:
+                          FlutterFlowTheme.of(context).bodyLarge.override(
+                                fontFamily: 'Noto Sans',
+                                fontSize: 18,
+                              ),
+                      checkboxBorderRadius: BorderRadius.circular(4),
+                      initialized: _model.checkboxGroupValues != null,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMatchupsTab(BuildContext context, List<MatchupsRecord> allMatchups,
+      _MatchupPageData data) {
+    // Drill-down: show filtered matchup list for selected archetype pair
+    if (_selectedArchetype != null) {
+      final agg = _selectedArchetype!;
+      final filtered = _sorted(agg.matchups, data);
+      return ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+        itemCount: filtered.length,
+        itemBuilder: (ctx, i) => _buildMatchupCard(ctx, filtered[i], data),
+      );
+    }
+
+    final aggs = _computeArchetypeAggs(allMatchups, data);
+    if (aggs.isEmpty) {
+      return _buildEmptyState(context,
+          message: 'Aucun matchup avec tes decks');
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+      itemCount: aggs.length,
+      itemBuilder: (ctx, i) =>
+          _buildArchetypeAggCard(ctx, aggs[i], data),
+    );
+  }
+
+  Widget _buildJoueursTab(BuildContext context, List<MatchupsRecord> allMatchups,
+      _MatchupPageData data) {
+    // Drill-down: show filtered matchup list for selected player
+    if (_selectedPlayer != null) {
+      final agg = _selectedPlayer!;
+      final filtered = _sorted(agg.matchups, data);
+      return ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+        itemCount: filtered.length,
+        itemBuilder: (ctx, i) => _buildMatchupCard(ctx, filtered[i], data),
+      );
+    }
+
+    final aggs = _computePlayerAggs(allMatchups, data);
+    if (aggs.isEmpty) {
+      return _buildEmptyState(context,
+          message: 'Aucune partie enregistrée');
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+      itemCount: aggs.length,
+      itemBuilder: (ctx, i) => _buildPlayerAggCard(ctx, aggs[i]),
+    );
+  }
+
+  // ─── Build ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     if (isiOS) {
-      SystemChrome.setSystemUIOverlayStyle(
-        SystemUiOverlayStyle(
-          statusBarBrightness: Theme.of(context).brightness,
-          systemStatusBarContrastEnforced: true,
-        ),
-      );
+      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+        statusBarBrightness: Theme.of(context).brightness,
+        systemStatusBarContrastEnforced: true,
+      ));
     }
-
     context.watch<FFAppState>();
 
+    final inDrillDown = _selectedArchetype != null || _selectedPlayer != null;
+
     return AuthUserStreamWidget(
-      builder: (context) => FutureBuilder<List<DecksRecord>>(
-        future: queryDecksRecordOnce(
-          queryBuilder: (decksRecord) => decksRecord
-              .where(
-                'crewId',
-                isEqualTo: valueOrDefault(currentUserDocument?.crewId, '') != ''
-                    ? valueOrDefault(currentUserDocument?.crewId, '')
+      builder: (context) {
+        final crewId = valueOrDefault(currentUserDocument?.crewId, '');
+        final myCrewmateId = currentUserDocument?.crewmateRef?.id;
+        final orgIds = (currentUserDocument?.organizationIds ?? [])
+            .where((id) => id.isNotEmpty)
+            .toList();
+
+        return FutureBuilder<_MatchupPageData>(
+          future: _getPageData(crewId, myCrewmateId),
+          builder: (context, dataSnap) {
+            if (!dataSnap.hasData) {
+              return Scaffold(
+                backgroundColor: FlutterFlowTheme.of(context).alternate,
+                body: const Center(
+                  child: SizedBox(
+                    width: 50,
+                    height: 50,
+                    child: SpinKitFadingFour(color: Color(0xFFE6486F), size: 50),
+                  ),
+                ),
+              );
+            }
+
+            final pageData = dataSnap.data!;
+            final deckNames = pageData.decks
+                .map((e) => e.name.isNotEmpty ? e.name : '--')
+                .toList();
+
+            // AppBar title changes in drill-down
+            String appBarTitle = 'Matchups';
+            if (_selectedArchetype != null) {
+              appBarTitle =
+                  '${_selectedArchetype!.myArchetype} vs ${_selectedArchetype!.oppArchetype}';
+            } else if (_selectedPlayer != null) {
+              appBarTitle = 'vs ${_selectedPlayer!.playerName}';
+            }
+
+            return GestureDetector(
+              onTap: () => _model.unfocusNode.canRequestFocus
+                  ? FocusScope.of(context).requestFocus(_model.unfocusNode)
+                  : FocusScope.of(context).unfocus(),
+              child: Scaffold(
+                key: scaffoldKey,
+                backgroundColor: FlutterFlowTheme.of(context).alternate,
+                floatingActionButton: _tabController.index == 0
+                    ? FloatingActionButton.extended(
+                        onPressed: () {
+                          logFirebaseEvent(
+                              'B3_MATCHUP_LIST_FloatingActionButton_0c2');
+                          context.pushNamed('B2_AddMatchup');
+                        },
+                        backgroundColor:
+                            FlutterFlowTheme.of(context).primary,
+                        icon: const Icon(Icons.add),
+                        elevation: 8.0,
+                        label: Text(
+                          FFLocalizations.of(context).getText('kpx4xw60'),
+                          style: FlutterFlowTheme.of(context).bodyMedium,
+                        ),
+                      )
                     : null,
-              )
-              .orderBy('name'),
-        ),
-        builder: (context, snapshot) {
-          // Customize what your widget looks like when it's loading.
-          if (!snapshot.hasData) {
-            return Scaffold(
-              backgroundColor: FlutterFlowTheme.of(context).alternate,
-              body: Center(
-                child: SizedBox(
-                  width: 50.0,
-                  height: 50.0,
-                  child: SpinKitFadingFour(
-                    color: Color(0xFFE6486F),
-                    size: 50.0,
+                appBar: AppBar(
+                  backgroundColor: FlutterFlowTheme.of(context).primary,
+                  automaticallyImplyLeading: !inDrillDown,
+                  leading: inDrillDown
+                      ? IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => setState(() {
+                            _selectedArchetype = null;
+                            _selectedPlayer = null;
+                          }),
+                        )
+                      : null,
+                  title: Text(
+                    appBarTitle,
+                    style: FlutterFlowTheme.of(context).titleLarge.override(
+                          fontFamily: 'Cinzel Decorative',
+                          fontSize: inDrillDown ? 16.0 : 24.0,
+                          letterSpacing: 0.9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  centerTitle: true,
+                  elevation: 4.0,
+                  bottom: inDrillDown
+                      ? null
+                      : TabBar(
+                          controller: _tabController,
+                          indicatorColor:
+                              FlutterFlowTheme.of(context).tertiary,
+                          labelColor: FlutterFlowTheme.of(context).primaryText,
+                          unselectedLabelColor: FlutterFlowTheme.of(context)
+                              .primaryText
+                              .withOpacity(0.5),
+                          labelStyle: const TextStyle(
+                            fontFamily: 'Noto Sans',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          tabs: const [
+                            Tab(text: 'Parties'),
+                            Tab(text: 'Matchups'),
+                            Tab(text: 'Joueurs'),
+                          ],
+                        ),
+                ),
+                body: SafeArea(
+                  top: true,
+                  child: StreamBuilder<List<MatchupsRecord>>(
+                    stream: crewId.isNotEmpty
+                        ? queryMatchupsRecord(
+                            queryBuilder: (q) =>
+                                q.where('crewId', isEqualTo: crewId),
+                          )
+                        : orgIds.isNotEmpty
+                            ? queryMatchupsRecord(
+                                queryBuilder: (q) => q.where(
+                                  'organizationId',
+                                  whereIn: orgIds.take(30).toList(),
+                                ),
+                              )
+                            : Stream.value(<MatchupsRecord>[]),
+                    builder: (context, matchupSnap) {
+                      if (!matchupSnap.hasData) {
+                        return const Center(
+                          child: SizedBox(
+                            width: 50,
+                            height: 50,
+                            child: SpinKitFadingFour(
+                                color: Color(0xFFE6486F), size: 50),
+                          ),
+                        );
+                      }
+
+                      final allMatchups = matchupSnap.data!;
+
+                      return Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF323236), Color(0xFFE6486F)],
+                            stops: [0.0, 1.0],
+                            begin: AlignmentDirectional(0.0, -1.0),
+                            end: AlignmentDirectional(0, 1.0),
+                          ),
+                        ),
+                        child: inDrillDown
+                            ? (_selectedArchetype != null
+                                ? _buildMatchupsTab(
+                                    context, allMatchups, pageData)
+                                : _buildJoueursTab(
+                                    context, allMatchups, pageData))
+                            : TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  _buildPartiesTab(
+                                      context, allMatchups, pageData, deckNames),
+                                  _buildMatchupsTab(
+                                      context, allMatchups, pageData),
+                                  _buildJoueursTab(
+                                      context, allMatchups, pageData),
+                                ],
+                              ),
+                      );
+                    },
                   ),
                 ),
               ),
             );
-          }
-          List<DecksRecord> b3MatchupListDecksRecordList = snapshot.data!;
-          return GestureDetector(
-            onTap: () => _model.unfocusNode.canRequestFocus
-                ? FocusScope.of(context).requestFocus(_model.unfocusNode)
-                : FocusScope.of(context).unfocus(),
-            child: Scaffold(
-              key: scaffoldKey,
-              backgroundColor: FlutterFlowTheme.of(context).alternate,
-              floatingActionButton: FloatingActionButton.extended(
-                onPressed: () async {
-                  logFirebaseEvent('B3_MATCHUP_LIST_FloatingActionButton_0c2');
-                  logFirebaseEvent('FloatingActionButton_navigate_to');
-
-                  context.pushNamed('B2_AddMatchup');
-                },
-                backgroundColor: FlutterFlowTheme.of(context).primary,
-                icon: Icon(
-                  Icons.add,
-                ),
-                elevation: 8.0,
-                label: Text(
-                  FFLocalizations.of(context).getText(
-                    'kpx4xw60' /* Add match */,
-                  ),
-                  style: FlutterFlowTheme.of(context).bodyMedium,
-                ),
-              ),
-              appBar: AppBar(
-                backgroundColor: FlutterFlowTheme.of(context).primary,
-                automaticallyImplyLeading: true,
-                title: Text(
-                  FFLocalizations.of(context).getText(
-                    '1q1aupjz' /* Matchups */,
-                  ),
-                  style: FlutterFlowTheme.of(context).titleLarge.override(
-                        fontFamily: 'Cinzel Decorative',
-                        fontSize: 24.0,
-                        letterSpacing: 0.9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                actions: [],
-                centerTitle: true,
-                elevation: 4.0,
-              ),
-              body: SafeArea(
-                top: true,
-                child: StreamBuilder<List<MatchupsRecord>>(
-                  stream: queryMatchupsRecord(
-                    queryBuilder: (matchupsRecord) => matchupsRecord
-                        .where(
-                          'crewId',
-                          isEqualTo: valueOrDefault(
-                                      currentUserDocument?.crewId, '') !=
-                                  ''
-                              ? valueOrDefault(currentUserDocument?.crewId, '')
-                              : null,
-                        )
-                        .whereArrayContainsAny(
-                            'deckIds',
-                            functions.fromDeckNamesToIds(
-                                        _model.checkboxGroupValues?.toList(),
-                                        b3MatchupListDecksRecordList
-                                            .toList()) !=
-                                    ''
-                                ? functions.fromDeckNamesToIds(
-                                    _model.checkboxGroupValues?.toList(),
-                                    b3MatchupListDecksRecordList.toList())
-                                : null),
-                  ),
-                  builder: (context, snapshot) {
-                    // Customize what your widget looks like when it's loading.
-                    if (!snapshot.hasData) {
-                      return Center(
-                        child: SizedBox(
-                          width: 50.0,
-                          height: 50.0,
-                          child: SpinKitFadingFour(
-                            color: Color(0xFFE6486F),
-                            size: 50.0,
-                          ),
-                        ),
-                      );
-                    }
-                    List<MatchupsRecord> queryWrapperMatchupsRecordList =
-                        snapshot.data!;
-                    return Container(
-                      width: MediaQuery.sizeOf(context).width * 1.0,
-                      height: MediaQuery.sizeOf(context).height * 1.0,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF323236), Color(0xFFE6486F)],
-                          stops: [0.0, 1.0],
-                          begin: AlignmentDirectional(0.0, -1.0),
-                          end: AlignmentDirectional(0, 1.0),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (queryWrapperMatchupsRecordList.length > 0)
-                            Stack(
-                              children: [
-                                Container(
-                                  width: MediaQuery.sizeOf(context).width * 1.0,
-                                  height:
-                                      MediaQuery.sizeOf(context).height * 1.0,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Color(0xFF323236),
-                                        Color(0xFFE6486F)
-                                      ],
-                                      stops: [0.0, 1.0],
-                                      begin: AlignmentDirectional(0.0, -1.0),
-                                      end: AlignmentDirectional(0, 1.0),
-                                    ),
-                                  ),
-                                  child: SingleChildScrollView(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.max,
-                                      children: [
-                                        Builder(
-                                          builder: (context) {
-                                            final matchups =
-                                                queryWrapperMatchupsRecordList
-                                                    .toList();
-                                            return ListView.separated(
-                                              padding: EdgeInsets.fromLTRB(
-                                                0,
-                                                72.0,
-                                                0,
-                                                110.0,
-                                              ),
-                                              primary: false,
-                                              shrinkWrap: true,
-                                              scrollDirection: Axis.vertical,
-                                              itemCount: matchups.length,
-                                              separatorBuilder: (_, __) =>
-                                                  SizedBox(height: 20.0),
-                                              itemBuilder:
-                                                  (context, matchupsIndex) {
-                                                final matchupsItem =
-                                                    matchups[matchupsIndex];
-                                                return Padding(
-                                                  padding: EdgeInsetsDirectional
-                                                      .fromSTEB(
-                                                          20.0, 0.0, 20.0, 0.0),
-                                                  child: InkWell(
-                                                    splashColor:
-                                                        Colors.transparent,
-                                                    focusColor:
-                                                        Colors.transparent,
-                                                    hoverColor:
-                                                        Colors.transparent,
-                                                    highlightColor:
-                                                        Colors.transparent,
-                                                    onTap: () async {
-                                                      logFirebaseEvent(
-                                                          'B3_MATCHUP_LIST_PAGE_GameItem_ON_TAP');
-                                                      logFirebaseEvent(
-                                                          'GameItem_navigate_to');
-
-                                                      context.pushNamed(
-                                                        'B4_MatchupView',
-                                                        queryParameters: {
-                                                          'matchupId':
-                                                              serializeParam(
-                                                            matchupsItem
-                                                                .matchupId,
-                                                            ParamType.String,
-                                                          ),
-                                                        }.withoutNulls,
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      decoration: BoxDecoration(
-                                                        boxShadow: [
-                                                          BoxShadow(
-                                                            blurRadius: 3.0,
-                                                            color: Color(
-                                                                0x411D2429),
-                                                            offset: Offset(
-                                                                0.0, 1.0),
-                                                          )
-                                                        ],
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(30.0),
-                                                      ),
-                                                      child: Material(
-                                                        color:
-                                                            Colors.transparent,
-                                                        elevation: 1.0,
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(
-                                                                      30.0),
-                                                        ),
-                                                        child: Container(
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: Colors
-                                                                .transparent,
-                                                            boxShadow: [
-                                                              BoxShadow(
-                                                                blurRadius: 4.0,
-                                                                color: Color(
-                                                                    0x00323236),
-                                                                offset: Offset(
-                                                                    0.0, 2.0),
-                                                              )
-                                                            ],
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        30.0),
-                                                          ),
-                                                          alignment:
-                                                              AlignmentDirectional(
-                                                                  0.0, 0.0),
-                                                          child: Column(
-                                                            mainAxisSize:
-                                                                MainAxisSize
-                                                                    .max,
-                                                            children: [
-                                                              Row(
-                                                                mainAxisSize:
-                                                                    MainAxisSize
-                                                                        .max,
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .start,
-                                                                children: [
-                                                                  Padding(
-                                                                    padding: EdgeInsetsDirectional
-                                                                        .fromSTEB(
-                                                                            8.0,
-                                                                            0.0,
-                                                                            0.0,
-                                                                            0.0),
-                                                                    child: FutureBuilder<
-                                                                        DecksRecord>(
-                                                                      future: DecksRecord.getDocumentOnce(matchupsItem
-                                                                          .scores
-                                                                          .first
-                                                                          .deckRef!),
-                                                                      builder:
-                                                                          (context,
-                                                                              snapshot) {
-                                                                        // Customize what your widget looks like when it's loading.
-                                                                        if (!snapshot
-                                                                            .hasData) {
-                                                                          return Center(
-                                                                            child:
-                                                                                SizedBox(
-                                                                              width: 50.0,
-                                                                              height: 50.0,
-                                                                              child: SpinKitFadingFour(
-                                                                                color: Color(0xFFE6486F),
-                                                                                size: 50.0,
-                                                                              ),
-                                                                            ),
-                                                                          );
-                                                                        }
-                                                                        final player1DecksRecord =
-                                                                            snapshot.data!;
-                                                                        return Container(
-                                                                          width:
-                                                                              MediaQuery.sizeOf(context).width * 0.4,
-                                                                          height:
-                                                                              MediaQuery.sizeOf(context).height * 0.2,
-                                                                          decoration:
-                                                                              BoxDecoration(),
-                                                                          child:
-                                                                              Column(
-                                                                            mainAxisSize:
-                                                                                MainAxisSize.max,
-                                                                            mainAxisAlignment:
-                                                                                MainAxisAlignment.center,
-                                                                            crossAxisAlignment:
-                                                                                CrossAxisAlignment.center,
-                                                                            children: [
-                                                                              Padding(
-                                                                                padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 8.0),
-                                                                                child: AutoSizeText(
-                                                                                  player1DecksRecord.name,
-                                                                                  maxLines: 1,
-                                                                                  style: FlutterFlowTheme.of(context).titleLarge.override(
-                                                                                        fontFamily: 'Cinzel Decorative',
-                                                                                        fontSize: 30.0,
-                                                                                        lineHeight: 0.8,
-                                                                                      ),
-                                                                                ),
-                                                                              ),
-                                                                              Padding(
-                                                                                padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
-                                                                                child: Row(
-                                                                                  mainAxisSize: MainAxisSize.max,
-                                                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                                                  children: [
-                                                                                    Container(
-                                                                                      width: MediaQuery.sizeOf(context).width * 0.15,
-                                                                                      height: MediaQuery.sizeOf(context).width * 0.15,
-                                                                                      clipBehavior: Clip.antiAlias,
-                                                                                      decoration: BoxDecoration(
-                                                                                        shape: BoxShape.circle,
-                                                                                      ),
-                                                                                      child: CachedNetworkImage(
-                                                                                        fadeInDuration: Duration(milliseconds: 500),
-                                                                                        fadeOutDuration: Duration(milliseconds: 500),
-                                                                                        imageUrl: player1DecksRecord.avatarUrl,
-                                                                                        fit: BoxFit.cover,
-                                                                                      ),
-                                                                                    ),
-                                                                                    Padding(
-                                                                                      padding: EdgeInsetsDirectional.fromSTEB(12.0, 0.0, 0.0, 0.0),
-                                                                                      child: Text(
-                                                                                        matchupsItem.scores.first.score.toString(),
-                                                                                        style: FlutterFlowTheme.of(context).bodyMedium.override(
-                                                                                              fontFamily: 'Noto Sans',
-                                                                                              fontSize: 32.0,
-                                                                                            ),
-                                                                                      ),
-                                                                                    ),
-                                                                                  ],
-                                                                                ),
-                                                                              ),
-                                                                            ],
-                                                                          ),
-                                                                        );
-                                                                      },
-                                                                    ),
-                                                                  ),
-                                                                  Padding(
-                                                                    padding: EdgeInsetsDirectional
-                                                                        .fromSTEB(
-                                                                            8.0,
-                                                                            0.0,
-                                                                            8.0,
-                                                                            0.0),
-                                                                    child: FutureBuilder<
-                                                                        DecksRecord>(
-                                                                      future: DecksRecord.getDocumentOnce(matchupsItem
-                                                                          .scores
-                                                                          .last
-                                                                          .deckRef!),
-                                                                      builder:
-                                                                          (context,
-                                                                              snapshot) {
-                                                                        // Customize what your widget looks like when it's loading.
-                                                                        if (!snapshot
-                                                                            .hasData) {
-                                                                          return Center(
-                                                                            child:
-                                                                                SizedBox(
-                                                                              width: 50.0,
-                                                                              height: 50.0,
-                                                                              child: SpinKitFadingFour(
-                                                                                color: Color(0xFFE6486F),
-                                                                                size: 50.0,
-                                                                              ),
-                                                                            ),
-                                                                          );
-                                                                        }
-                                                                        final player2DecksRecord =
-                                                                            snapshot.data!;
-                                                                        return Container(
-                                                                          width:
-                                                                              MediaQuery.sizeOf(context).width * 0.4,
-                                                                          height:
-                                                                              MediaQuery.sizeOf(context).height * 0.2,
-                                                                          decoration:
-                                                                              BoxDecoration(),
-                                                                          child:
-                                                                              Column(
-                                                                            mainAxisSize:
-                                                                                MainAxisSize.max,
-                                                                            mainAxisAlignment:
-                                                                                MainAxisAlignment.center,
-                                                                            crossAxisAlignment:
-                                                                                CrossAxisAlignment.center,
-                                                                            children: [
-                                                                              Padding(
-                                                                                padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 8.0),
-                                                                                child: AutoSizeText(
-                                                                                  player2DecksRecord.name,
-                                                                                  maxLines: 1,
-                                                                                  style: FlutterFlowTheme.of(context).titleLarge.override(
-                                                                                        fontFamily: 'Cinzel Decorative',
-                                                                                        fontSize: 30.0,
-                                                                                        lineHeight: 0.8,
-                                                                                      ),
-                                                                                ),
-                                                                              ),
-                                                                              Padding(
-                                                                                padding: EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
-                                                                                child: Row(
-                                                                                  mainAxisSize: MainAxisSize.max,
-                                                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                                                  children: [
-                                                                                    Padding(
-                                                                                      padding: EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 12.0, 0.0),
-                                                                                      child: Text(
-                                                                                        matchupsItem.scores.last.score.toString(),
-                                                                                        style: FlutterFlowTheme.of(context).bodyMedium.override(
-                                                                                              fontFamily: 'Noto Sans',
-                                                                                              fontSize: 32.0,
-                                                                                            ),
-                                                                                      ),
-                                                                                    ),
-                                                                                    Container(
-                                                                                      width: MediaQuery.sizeOf(context).width * 0.15,
-                                                                                      height: MediaQuery.sizeOf(context).width * 0.15,
-                                                                                      clipBehavior: Clip.antiAlias,
-                                                                                      decoration: BoxDecoration(
-                                                                                        shape: BoxShape.circle,
-                                                                                      ),
-                                                                                      child: CachedNetworkImage(
-                                                                                        fadeInDuration: Duration(milliseconds: 500),
-                                                                                        fadeOutDuration: Duration(milliseconds: 500),
-                                                                                        imageUrl: player2DecksRecord.avatarUrl,
-                                                                                        fit: BoxFit.cover,
-                                                                                      ),
-                                                                                    ),
-                                                                                  ],
-                                                                                ),
-                                                                              ),
-                                                                            ],
-                                                                          ),
-                                                                        );
-                                                                      },
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: EdgeInsetsDirectional.fromSTEB(
-                                      8.0, 8.0, 0.0, 0.0),
-                                  child: Container(
-                                    decoration: BoxDecoration(),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        FFButtonWidget(
-                                          onPressed: () async {
-                                            logFirebaseEvent(
-                                                'B3_MATCHUP_LIST_PAGE_DECKS_BTN_ON_TAP');
-                                            logFirebaseEvent(
-                                                'Button_update_page_state');
-                                            setState(() {
-                                              _model.isDeckFilterOpen =
-                                                  valueOrDefault<bool>(
-                                                !_model.isDeckFilterOpen,
-                                                false,
-                                              );
-                                            });
-                                          },
-                                          text: FFLocalizations.of(context)
-                                              .getText(
-                                            'f5s9h70j' /* Decks */,
-                                          ),
-                                          icon: Icon(
-                                            Icons.filter_list,
-                                            size: 15.0,
-                                          ),
-                                          options: FFButtonOptions(
-                                            width: 150.0,
-                                            height: 50.0,
-                                            padding:
-                                                EdgeInsetsDirectional.fromSTEB(
-                                                    0.0, 0.0, 0.0, 0.0),
-                                            iconPadding:
-                                                EdgeInsetsDirectional.fromSTEB(
-                                                    0.0, 0.0, 0.0, 0.0),
-                                            color: Color(0xFF645D5D),
-                                            textStyle:
-                                                FlutterFlowTheme.of(context)
-                                                    .titleSmall
-                                                    .override(
-                                                      fontFamily:
-                                                          'Cinzel Decorative',
-                                                      color: Colors.white,
-                                                      fontSize: 18.0,
-                                                    ),
-                                            elevation: 3.0,
-                                            borderSide: BorderSide(
-                                              color: Colors.transparent,
-                                              width: 1.0,
-                                            ),
-                                            borderRadius:
-                                                BorderRadius.circular(20.0),
-                                          ),
-                                        ),
-                                        if (_model.isDeckFilterOpen)
-                                          Padding(
-                                            padding: EdgeInsets.all(8.0),
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: Color(0xFF645D5D),
-                                                borderRadius:
-                                                    BorderRadius.circular(8.0),
-                                              ),
-                                              child: Stack(
-                                                children: [
-                                                  FlutterFlowCheckboxGroup(
-                                                    options:
-                                                        b3MatchupListDecksRecordList
-                                                            .map((e) =>
-                                                                valueOrDefault<
-                                                                    String>(
-                                                                  e.name,
-                                                                  '--',
-                                                                ))
-                                                            .toList(),
-                                                    onChanged: (val) =>
-                                                        setState(() => _model
-                                                                .checkboxGroupValues =
-                                                            val),
-                                                    controller: _model
-                                                            .checkboxGroupValueController ??=
-                                                        FormFieldController<
-                                                            List<String>>(
-                                                      [],
-                                                    ),
-                                                    activeColor:
-                                                        FlutterFlowTheme.of(
-                                                                context)
-                                                            .tertiary,
-                                                    checkColor:
-                                                        FlutterFlowTheme.of(
-                                                                context)
-                                                            .primary,
-                                                    checkboxBorderColor:
-                                                        FlutterFlowTheme.of(
-                                                                context)
-                                                            .tertiary,
-                                                    textStyle:
-                                                        FlutterFlowTheme.of(
-                                                                context)
-                                                            .bodyLarge
-                                                            .override(
-                                                              fontFamily:
-                                                                  'Noto Sans',
-                                                              fontSize: 18.0,
-                                                            ),
-                                                    checkboxBorderRadius:
-                                                        BorderRadius.circular(
-                                                            4.0),
-                                                    initialized: _model
-                                                            .checkboxGroupValues !=
-                                                        null,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          if (queryWrapperMatchupsRecordList.length == 0)
-                            Align(
-                              alignment: AlignmentDirectional(0.0, 0.0),
-                              child: Padding(
-                                padding: EdgeInsetsDirectional.fromSTEB(
-                                    28.0, 0.0, 28.0, 40.0),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.max,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      FFIcons.kred,
-                                      color: FlutterFlowTheme.of(context)
-                                          .secondaryText,
-                                      size: 90.0,
-                                    ),
-                                    Padding(
-                                      padding: EdgeInsetsDirectional.fromSTEB(
-                                          0.0, 24.0, 0.0, 0.0),
-                                      child: Text(
-                                        FFLocalizations.of(context).getText(
-                                          'wxo7v8rv' /* You don't have any matchup yet */,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        style: FlutterFlowTheme.of(context)
-                                            .titleMedium
-                                            .override(
-                                              fontFamily: 'Cinzel Decorative',
-                                              color:
-                                                  FlutterFlowTheme.of(context)
-                                                      .primaryText,
-                                              fontSize: 24.0,
-                                              fontWeight: FontWeight.normal,
-                                            ),
-                                      ),
-                                    ),
-                                    Align(
-                                      alignment: AlignmentDirectional(0.0, 0.0),
-                                      child: Padding(
-                                        padding: EdgeInsetsDirectional.fromSTEB(
-                                            0.0, 4.0, 0.0, 0.0),
-                                        child: Text(
-                                          FFLocalizations.of(context).getText(
-                                            'bikscpls' /* Create your first match with t... */,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                          style: FlutterFlowTheme.of(context)
-                                              .bodyMedium
-                                              .override(
-                                                fontFamily: 'Noto Sans',
-                                                fontSize: 12.0,
-                                              ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+          },
+        );
+      },
     );
   }
 }

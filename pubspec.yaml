@@ -3,7 +3,7 @@ description: A new Flutter project.
 
 publish_to: 'none'
 
-version: 1.0.2+16
+version: 1.0.3+17
 
 environment:
   sdk: ">=3.3.0 <5.0.0"
@@ -51,6 +51,8 @@ dependencies:
   url_launcher: ^6.1.10
   video_player: ^2.8.1
   wakelock_plus: ^1.0.0
+  http: ^1.2.0
+  webview_flutter: ^4.10.0
 
   cupertino_icons: ^1.0.0
 

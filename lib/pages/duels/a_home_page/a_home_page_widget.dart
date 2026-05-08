@@ -188,84 +188,112 @@ class _AHomePageWidgetState extends State<AHomePageWidget> {
                     child: Stack(
                       alignment: AlignmentDirectional(0.0, 0.0),
                       children: [
-                        Align(
-                          alignment: AlignmentDirectional(0.0, 0.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.max,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Padding(
-                                padding: EdgeInsetsDirectional.fromSTEB(
-                                    0.0, 0.0, 4.0, 0.0),
-                                child: Text(
-                                  FFLocalizations.of(context).getText(
-                                    '5upd8f28' /* Ranked game */,
+                        // Show "Partie Crew" toggle only for users with a real
+                        // (non-solo) crew. Others see a prompt to join/create.
+                        AuthUserStreamWidget(
+                          builder: (context) {
+                            final hasRealCrew =
+                                currentUserDocument?.hasRealCrew ?? false;
+                            if (hasRealCrew) {
+                              return Align(
+                                alignment: AlignmentDirectional(0.0, 0.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.max,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Padding(
+                                      padding: EdgeInsetsDirectional.fromSTEB(
+                                          0.0, 0.0, 4.0, 0.0),
+                                      child: Text(
+                                        FFLocalizations.of(context).getText(
+                                          '5upd8f28' /* Crew game */,
+                                        ),
+                                        textAlign: TextAlign.start,
+                                        style: FlutterFlowTheme.of(context)
+                                            .bodyMedium
+                                            .override(
+                                              fontFamily: 'Noto Sans',
+                                              fontSize: 18.0,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                      ),
+                                    ),
+                                    Switch.adaptive(
+                                      value: _model.switchValue ??= false,
+                                      onChanged: (newValue) async {
+                                        setState(() =>
+                                            _model.switchValue = newValue!);
+                                      },
+                                      activeColor: FlutterFlowTheme.of(context)
+                                          .tertiary,
+                                      activeTrackColor:
+                                          FlutterFlowTheme.of(context).tertiary,
+                                      inactiveTrackColor:
+                                          FlutterFlowTheme.of(context)
+                                              .primaryText,
+                                      inactiveThumbColor:
+                                          FlutterFlowTheme.of(context)
+                                              .primaryText,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            // No crew or solo crew → prompt to join/create.
+                            return GestureDetector(
+                              onTap: () => context.pushNamed('A_CrewMenu'),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12, horizontal: 24),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: FlutterFlowTheme.of(context)
+                                        .primaryText
+                                        .withOpacity(0.25),
                                   ),
-                                  textAlign: TextAlign.start,
-                                  style: FlutterFlowTheme.of(context)
-                                      .bodyMedium
-                                      .override(
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.group_add_outlined,
+                                      color: FlutterFlowTheme.of(context)
+                                          .primaryText,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Rejoindre ou créer un crew',
+                                      style: TextStyle(
                                         fontFamily: 'Noto Sans',
-                                        fontSize: 18.0,
+                                        color: FlutterFlowTheme.of(context)
+                                            .primaryText,
+                                        fontSize: 15,
                                         fontWeight: FontWeight.w500,
                                       ),
-                                ),
-                              ),
-                              Switch.adaptive(
-                                value: _model.switchValue ??= false,
-                                onChanged: (newValue) async {
-                                  setState(
-                                      () => _model.switchValue = newValue!);
-                                },
-                                activeColor:
-                                    FlutterFlowTheme.of(context).tertiary,
-                                activeTrackColor:
-                                    FlutterFlowTheme.of(context).tertiary,
-                                inactiveTrackColor:
-                                    FlutterFlowTheme.of(context).primaryText,
-                                inactiveThumbColor:
-                                    FlutterFlowTheme.of(context).primaryText,
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (valueOrDefault(currentUserDocument?.crewId, '') ==
-                                null ||
-                            valueOrDefault(currentUserDocument?.crewId, '') ==
-                                '')
-                          AuthUserStreamWidget(
-                            builder: (context) => Container(
-                              width: MediaQuery.sizeOf(context).width * 1.0,
-                              height: 80.0,
-                              decoration: BoxDecoration(
-                                color: Color(0x617F5656),
-                              ),
-                              child: Align(
-                                alignment: AlignmentDirectional(0.0, 1.0),
-                                child: Padding(
-                                  padding: EdgeInsetsDirectional.fromSTEB(
-                                      0.0, 0.0, 0.0, 4.0),
-                                  child: Text(
-                                    FFLocalizations.of(context).getText(
-                                      'hehegkwb' /* You need to have a Crew for ra... */,
                                     ),
-                                    style: FlutterFlowTheme.of(context)
-                                        .bodyMedium
-                                        .override(
-                                          fontFamily: 'Noto Sans',
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                  ),
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      color: FlutterFlowTheme.of(context)
+                                          .primaryText
+                                          .withOpacity(0.6),
+                                      size: 14,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                          ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
                 ),
-                if (!true)
+                if (true) // TODO: remove before prod
                   FFButtonWidget(
                     onPressed: () async {
                       logFirebaseEvent('A_HOME_LOG_OUT_V0_11_BTN_ON_TAP');

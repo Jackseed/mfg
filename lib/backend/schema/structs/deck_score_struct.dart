@@ -13,10 +13,14 @@ class DeckScoreStruct extends FFFirebaseStruct {
     int? wins,
     double? winrate,
     int? losses,
+    int? matchWins,
+    int? matchLosses,
     FirestoreUtilData firestoreUtilData = const FirestoreUtilData(),
   })  : _wins = wins,
         _winrate = winrate,
         _losses = losses,
+        _matchWins = matchWins,
+        _matchLosses = matchLosses,
         super(firestoreUtilData);
 
   // "wins" field.
@@ -40,10 +44,26 @@ class DeckScoreStruct extends FFFirebaseStruct {
   void incrementLosses(int amount) => _losses = losses + amount;
   bool hasLosses() => _losses != null;
 
+  // "matchWins" field — number of BO3 matches won.
+  int? _matchWins;
+  int get matchWins => _matchWins ?? 0;
+  set matchWins(int? val) => _matchWins = val;
+  void incrementMatchWins(int amount) => _matchWins = matchWins + amount;
+  bool hasMatchWins() => _matchWins != null;
+
+  // "matchLosses" field — number of BO3 matches lost.
+  int? _matchLosses;
+  int get matchLosses => _matchLosses ?? 0;
+  set matchLosses(int? val) => _matchLosses = val;
+  void incrementMatchLosses(int amount) => _matchLosses = matchLosses + amount;
+  bool hasMatchLosses() => _matchLosses != null;
+
   static DeckScoreStruct fromMap(Map<String, dynamic> data) => DeckScoreStruct(
         wins: castToType<int>(data['wins']),
         winrate: castToType<double>(data['winrate']),
         losses: castToType<int>(data['losses']),
+        matchWins: castToType<int>(data['matchWins']),
+        matchLosses: castToType<int>(data['matchLosses']),
       );
 
   static DeckScoreStruct? maybeFromMap(dynamic data) => data is Map
@@ -54,6 +74,8 @@ class DeckScoreStruct extends FFFirebaseStruct {
         'wins': _wins,
         'winrate': _winrate,
         'losses': _losses,
+        'matchWins': _matchWins,
+        'matchLosses': _matchLosses,
       }.withoutNulls;
 
   @override
@@ -68,6 +90,14 @@ class DeckScoreStruct extends FFFirebaseStruct {
         ),
         'losses': serializeParam(
           _losses,
+          ParamType.int,
+        ),
+        'matchWins': serializeParam(
+          _matchWins,
+          ParamType.int,
+        ),
+        'matchLosses': serializeParam(
+          _matchLosses,
           ParamType.int,
         ),
       }.withoutNulls;
@@ -89,6 +119,16 @@ class DeckScoreStruct extends FFFirebaseStruct {
           ParamType.int,
           false,
         ),
+        matchWins: deserializeParam(
+          data['matchWins'],
+          ParamType.int,
+          false,
+        ),
+        matchLosses: deserializeParam(
+          data['matchLosses'],
+          ParamType.int,
+          false,
+        ),
       );
 
   @override
@@ -99,17 +139,22 @@ class DeckScoreStruct extends FFFirebaseStruct {
     return other is DeckScoreStruct &&
         wins == other.wins &&
         winrate == other.winrate &&
-        losses == other.losses;
+        losses == other.losses &&
+        matchWins == other.matchWins &&
+        matchLosses == other.matchLosses;
   }
 
   @override
-  int get hashCode => const ListEquality().hash([wins, winrate, losses]);
+  int get hashCode =>
+      const ListEquality().hash([wins, winrate, losses, matchWins, matchLosses]);
 }
 
 DeckScoreStruct createDeckScoreStruct({
   int? wins,
   double? winrate,
   int? losses,
+  int? matchWins,
+  int? matchLosses,
   Map<String, dynamic> fieldValues = const {},
   bool clearUnsetFields = true,
   bool create = false,
@@ -119,6 +164,8 @@ DeckScoreStruct createDeckScoreStruct({
       wins: wins,
       winrate: winrate,
       losses: losses,
+      matchWins: matchWins,
+      matchLosses: matchLosses,
       firestoreUtilData: FirestoreUtilData(
         clearUnsetFields: clearUnsetFields,
         create: create,

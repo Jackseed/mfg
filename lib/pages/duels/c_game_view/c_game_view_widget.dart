@@ -189,8 +189,13 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
     );
 
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      animationsMap['rowOnPageLoadAnimation1']!.controller.forward(from: 0.0);
-      animationsMap['rowOnPageLoadAnimation2']!.controller.forward(from: 0.0);
+      final ctrl1 = animationsMap['rowOnPageLoadAnimation1']!.controller;
+      ctrl1.duration ??= const Duration(milliseconds: 600);
+      ctrl1.forward(from: 0.0);
+
+      final ctrl2 = animationsMap['rowOnPageLoadAnimation2']!.controller;
+      ctrl2.duration ??= const Duration(milliseconds: 600);
+      ctrl2.forward(from: 0.0);
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
@@ -232,7 +237,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                 angle: 3.1416,
                 child: Container(
                   width: MediaQuery.sizeOf(context).width * 1.0,
-                  height: MediaQuery.sizeOf(context).height * 0.5,
+                  height: (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top - MediaQuery.paddingOf(context).bottom) * 0.5,
                   decoration: BoxDecoration(
                     image: DecorationImage(
                       fit: BoxFit.cover,
@@ -259,7 +264,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                   ),
                   child: Container(
                     width: MediaQuery.sizeOf(context).width * 1.0,
-                    height: MediaQuery.sizeOf(context).height * 0.5,
+                    height: (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top - MediaQuery.paddingOf(context).bottom) * 0.5,
                     child: Stack(
                       children: [
                         if (_model.isPlayer1Victorious)
@@ -267,7 +272,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                             alignment: AlignmentDirectional(1.0, 0.0),
                             child: Container(
                               width: MediaQuery.sizeOf(context).width * 1.0,
-                              height: MediaQuery.sizeOf(context).height * 0.5,
+                              height: (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top - MediaQuery.paddingOf(context).bottom) * 0.5,
                               child: RiveAnimation.asset(
                                 'assets/rive_animations/confetti_mobile_(1).riv',
                                 artboard: 'Confetti.svg',
@@ -278,7 +283,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                           ),
                         Container(
                           width: MediaQuery.sizeOf(context).width * 1.0,
-                          height: MediaQuery.sizeOf(context).height * 0.5,
+                          height: (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top - MediaQuery.paddingOf(context).bottom) * 0.5,
                           decoration: BoxDecoration(
                             color: Color(0x33323236),
                           ),
@@ -2231,7 +2236,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
               ),
               Container(
                 width: MediaQuery.sizeOf(context).width * 1.0,
-                height: MediaQuery.sizeOf(context).height * 0.5,
+                height: (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top - MediaQuery.paddingOf(context).bottom) * 0.5,
                 decoration: BoxDecoration(
                   image: DecorationImage(
                     fit: BoxFit.cover,
@@ -2255,7 +2260,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                 ),
                 child: Container(
                   width: MediaQuery.sizeOf(context).width * 1.0,
-                  height: MediaQuery.sizeOf(context).height * 0.5,
+                  height: (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top - MediaQuery.paddingOf(context).bottom) * 0.5,
                   child: Stack(
                     children: [
                       if (valueOrDefault<bool>(
@@ -2266,7 +2271,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                           alignment: AlignmentDirectional(1.0, 0.0),
                           child: Container(
                             width: MediaQuery.sizeOf(context).width * 1.0,
-                            height: MediaQuery.sizeOf(context).height * 0.5,
+                            height: (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top - MediaQuery.paddingOf(context).bottom) * 0.5,
                             child: RiveAnimation.asset(
                               'assets/rive_animations/confetti_mobile_(1).riv',
                               artboard: 'Confetti.svg',
@@ -2277,7 +2282,7 @@ class _CGameViewWidgetState extends State<CGameViewWidget>
                         ),
                       Container(
                         width: MediaQuery.sizeOf(context).width * 1.0,
-                        height: MediaQuery.sizeOf(context).height * 0.5,
+                        height: (MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top - MediaQuery.paddingOf(context).bottom) * 0.5,
                         decoration: BoxDecoration(
                           color: Color(0x33323236),
                         ),

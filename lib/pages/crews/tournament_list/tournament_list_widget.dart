@@ -79,28 +79,29 @@ class _TournamentListWidgetState extends State<TournamentListWidget> {
 
   Future<void> _loadData() async {
     try {
-      // Step 1: Get user's main crewmate → Spicerack userId
-      final crewmateRef = currentUserDocument?.crewmateRef;
-      if (crewmateRef == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      final mainCrewmate =
-          await CrewmatesRecord.getDocumentOnce(crewmateRef);
-      final spicerackUserId = mainCrewmate.userId;
-
-      // Step 2: Find ALL crewmates with this Spicerack userId (across all crews)
-      final allCrewmates = await queryCrewmatesRecordOnce(
-        queryBuilder: (q) =>
-            q.where('userId', isEqualTo: spicerackUserId),
-      );
-
       final allCrewIds = <String>{};
       final allCrewmateIds = <String>{};
-      for (final cm in allCrewmates) {
-        allCrewmateIds.add(cm.reference.id);
-        allCrewIds.add(cm.parentReference.id);
+
+      // Step 1-2: Discover all crews via the crewmate chain. Only possible
+      // when crewmateRef is set (manual crew or legacy import). For users who
+      // imported Spicerack without a personal crew, crewmateRef is null and we
+      // skip straight to organizationIds below.
+      final crewmateRef = currentUserDocument?.crewmateRef;
+      if (crewmateRef != null) {
+        final mainCrewmate =
+            await CrewmatesRecord.getDocumentOnce(crewmateRef);
+        final spicerackUserId = mainCrewmate.userId;
+
+        // Find ALL crewmates with this Spicerack userId (across all crews)
+        final allCrewmates = await queryCrewmatesRecordOnce(
+          queryBuilder: (q) =>
+              q.where('userId', isEqualTo: spicerackUserId),
+        );
+
+        for (final cm in allCrewmates) {
+          allCrewmateIds.add(cm.reference.id);
+          allCrewIds.add(cm.parentReference.id);
+        }
       }
 
       // Also pick up the user's organization memberships (Spicerack-scoped
@@ -137,6 +138,8 @@ class _TournamentListWidgetState extends State<TournamentListWidget> {
         return all;
       }
 
+      // Phase 1: tournaments + decks in parallel. Decks are needed before we
+      // can ask Firestore for "matchups containing one of MY decks".
       final tournamentsByCrewFut = chunkedWhereIn<TournamentsRecord>(
         (chunk) => queryTournamentsRecordOnce(
           queryBuilder: (q) => q.where('crewId', whereIn: chunk),
@@ -149,18 +152,6 @@ class _TournamentListWidgetState extends State<TournamentListWidget> {
         ),
         orgIdsList,
       );
-      final matchupsByCrewFut = chunkedWhereIn<MatchupsRecord>(
-        (chunk) => queryMatchupsRecordOnce(
-          queryBuilder: (q) => q.where('crewId', whereIn: chunk),
-        ),
-        crewIdsList,
-      );
-      final matchupsByOrgFut = chunkedWhereIn<MatchupsRecord>(
-        (chunk) => queryMatchupsRecordOnce(
-          queryBuilder: (q) => q.where('organizationId', whereIn: chunk),
-        ),
-        orgIdsList,
-      );
       final decksFut = chunkedWhereIn<DecksRecord>(
         (chunk) => queryDecksRecordOnce(
           queryBuilder: (q) => q.where('crewId', whereIn: chunk),
@@ -168,34 +159,74 @@ class _TournamentListWidgetState extends State<TournamentListWidget> {
         crewIdsList,
       );
 
-      final results = await Future.wait([
+      final phase1 = await Future.wait([
         tournamentsByCrewFut,
         tournamentsByOrgFut,
-        matchupsByCrewFut,
-        matchupsByOrgFut,
         decksFut,
       ]);
 
-      // De-dup tournaments/matchups by reference path since the same doc may
-      // match both predicates (crewId + organizationId set).
       final tournamentsMerged = <String, TournamentsRecord>{};
       for (final list in [
-        results[0] as List<TournamentsRecord>,
-        results[1] as List<TournamentsRecord>,
+        phase1[0] as List<TournamentsRecord>,
+        phase1[1] as List<TournamentsRecord>,
       ]) {
         for (final t in list) {
           tournamentsMerged[t.reference.path] = t;
         }
       }
-      final matchupsMerged = <String, MatchupsRecord>{};
-      for (final list in [
-        results[2] as List<MatchupsRecord>,
-        results[3] as List<MatchupsRecord>,
-      ]) {
-        for (final m in list) {
-          matchupsMerged[m.reference.path] = m;
-        }
+      final phase1Decks = phase1[2] as List<DecksRecord>;
+
+      // Compute the user's deck IDs early so we can target the matchup query.
+      final myDeckIdsEarly = <String>{
+        for (final d in phase1Decks)
+          if (allCrewmateIds.contains(d.crewmateId) && d.deckId.isNotEmpty)
+            d.deckId,
+      };
+
+      // Phase 2: matchups — narrow to ones containing a user deck. Falls back
+      // to the broader crew/org query if the user has no decks yet, so an
+      // empty-state user (no imports) still sees their crew's manual games.
+      Future<List<MatchupsRecord>> matchupsFut;
+      if (myDeckIdsEarly.isNotEmpty) {
+        matchupsFut = chunkedWhereIn<MatchupsRecord>(
+          (chunk) => queryMatchupsRecordOnce(
+            queryBuilder: (q) =>
+                q.where('deckIds', arrayContainsAny: chunk),
+          ),
+          myDeckIdsEarly.toList(),
+          // arrayContainsAny is capped at 30 values per query (Firestore limit).
+          chunkSize: 30,
+        );
+      } else {
+        final mc = chunkedWhereIn<MatchupsRecord>(
+          (chunk) => queryMatchupsRecordOnce(
+            queryBuilder: (q) => q.where('crewId', whereIn: chunk),
+          ),
+          crewIdsList,
+        );
+        final mo = chunkedWhereIn<MatchupsRecord>(
+          (chunk) => queryMatchupsRecordOnce(
+            queryBuilder: (q) => q.where('organizationId', whereIn: chunk),
+          ),
+          orgIdsList,
+        );
+        matchupsFut = Future.wait([mc, mo]).then((lists) =>
+            [for (final list in lists) ...list]);
       }
+      final matchupsList = await matchupsFut;
+
+      final matchupsMerged = <String, MatchupsRecord>{
+        for (final m in matchupsList) m.reference.path: m,
+      };
+
+      // Re-shape phase1 outputs into the variable names used downstream.
+      final results = <List<dynamic>>[
+        phase1[0],
+        phase1[1],
+        const <MatchupsRecord>[],
+        const <MatchupsRecord>[],
+        phase1Decks,
+      ];
 
       final tournaments = tournamentsMerged.values.toList();
       final matchups = matchupsMerged.values.toList();
