@@ -1538,6 +1538,9 @@ class _TournamentDetailWidgetState extends State<TournamentDetailWidget> {
                     final savedPreviewUrl = previewUrl;
                     final savedPreviewCardName = previewCardName;
                     final savedTemplateRef = selectedTemplate?.reference;
+                    // Capture deckIds for merge — must happen before sheet closes.
+                    final oldDeckId = deck.deckId;
+                    final newDeckId = selectedTemplate?.deckId ?? '';
 
                     // Close the sheet immediately so no controller is accessed
                     // after this point (avoids disposed-controller errors during
@@ -1567,8 +1570,90 @@ class _TournamentDetailWidgetState extends State<TournamentDetailWidget> {
                         if (moxfield.isNotEmpty) 'moxfieldUrl': moxfield,
                         if (savedTemplateRef != null)
                           'templateRef': savedTemplateRef,
+                        // CRITICAL: keep the deck document's deckId in sync with
+                        // the newDeckId written to matchups/games by the merge
+                        // batch below. Without this, _loadTournamentData builds
+                        // myDeckIds from the old deckId and can't match any
+                        // matchup scores, making all games appear missing.
+                        if (savedTemplateRef != null && newDeckId.isNotEmpty)
+                          'deckId': newDeckId,
                       });
                     } catch (_) {}
+
+                    // Merge stats: reassign every matchup and game that
+                    // references oldDeckId so they count toward the target deck.
+                    // Stats on C1 are computed dynamically from matchups
+                    // (deckIds arrayContains), so no separate counter to update.
+                    final shouldMerge = savedTemplateRef != null &&
+                        oldDeckId.isNotEmpty &&
+                        newDeckId.isNotEmpty &&
+                        oldDeckId != newDeckId;
+                    if (shouldMerge) {
+                      try {
+                        final db = FirebaseFirestore.instance;
+
+                        // ── Matchups ──────────────────────────────────────────
+                        final matchupsSnap = await db
+                            .collection('matchups')
+                            .where('deckIds', arrayContains: oldDeckId)
+                            .get();
+
+                        // ── Games ─────────────────────────────────────────────
+                        final gamesSnap = await db
+                            .collection('games')
+                            .where('deckIds', arrayContains: oldDeckId)
+                            .get();
+
+                        // Batch all writes (Firestore limit = 500 ops).
+                        // A tournament typically has ≪ 500 matchups + games.
+                        final batch = db.batch();
+
+                        for (final doc in matchupsSnap.docs) {
+                          final data = doc.data();
+
+                          // Replace in deckIds array
+                          final deckIds =
+                              List<String>.from(data['deckIds'] as List? ?? []);
+                          final i = deckIds.indexOf(oldDeckId);
+                          if (i >= 0) deckIds[i] = newDeckId;
+
+                          // Replace inside scores[].deckId
+                          final rawScores = data['scores'];
+                          final scores = rawScores is List
+                              ? rawScores
+                                  .cast<Map<String, dynamic>>()
+                                  .map((s) => {
+                                        ...s,
+                                        if (s['deckId'] == oldDeckId)
+                                          'deckId': newDeckId,
+                                      })
+                                  .toList()
+                              : null;
+
+                          batch.update(doc.reference, {
+                            'deckIds': deckIds,
+                            if (scores != null) 'scores': scores,
+                          });
+                        }
+
+                        for (final doc in gamesSnap.docs) {
+                          final data = doc.data();
+                          final deckIds =
+                              List<String>.from(data['deckIds'] as List? ?? []);
+                          final i = deckIds.indexOf(oldDeckId);
+                          if (i >= 0) deckIds[i] = newDeckId;
+                          batch.update(doc.reference, {'deckIds': deckIds});
+                        }
+
+                        await batch.commit();
+                        debugPrint('[DeckMerge] reassigned '
+                            '${matchupsSnap.docs.length} matchups + '
+                            '${gamesSnap.docs.length} games '
+                            'from $oldDeckId → $newDeckId');
+                      } catch (e) {
+                        debugPrint('[DeckMerge] error: $e');
+                      }
+                    }
                     // setState will be called after showModalBottomSheet awaits
                     // (i.e. once the sheet is fully gone from the tree).
                   },
