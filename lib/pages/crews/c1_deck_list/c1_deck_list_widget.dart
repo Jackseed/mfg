@@ -32,8 +32,8 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
-  /// Currently selected view: snapshots (all imports) or templates only.
-  _DeckListView _view = _DeckListView.snapshots;
+  /// Currently selected view: templates/merged (default) or all snapshots.
+  _DeckListView _view = _DeckListView.templates;
 
   // Lazy-loaded set of crewmate IDs that belong to actual crew members
   // (those with userReference set). Opponents imported from tournaments have
@@ -163,6 +163,41 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
       );
     }
     return result;
+  }
+
+  /// Aggregates scores for a template by summing across the template's own
+  /// deckId AND all linked snapshot deckIds. Handles both the fully-merged
+  /// case (all share one deckId) and the partially-merged case (mixed ids).
+  DeckScoreStruct _aggregateScore(
+    DecksRecord template,
+    List<DecksRecord> allSnapshots,
+    Map<String, DeckScoreStruct> rawScores,
+  ) {
+    final ids = <String>{};
+    if (template.deckId.isNotEmpty) ids.add(template.deckId);
+    for (final s in allSnapshots) {
+      if (s.templateRef?.id == template.reference.id &&
+          s.deckId.isNotEmpty) {
+        ids.add(s.deckId);
+      }
+    }
+    int w = 0, l = 0, mw = 0, ml = 0;
+    for (final id in ids) {
+      final s = rawScores[id];
+      if (s == null) continue;
+      w += s.wins ?? 0;
+      l += s.losses ?? 0;
+      mw += s.matchWins ?? 0;
+      ml += s.matchLosses ?? 0;
+    }
+    final total = w + l;
+    return DeckScoreStruct(
+      wins: w,
+      losses: l,
+      matchWins: mw,
+      matchLosses: ml,
+      winrate: total > 0 ? w / total.toDouble() : 0.0,
+    );
   }
 
   /// Updates [_scoresFuture] synchronously during build if the visible deck
@@ -381,19 +416,30 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
                                       !d.hasIsTemplate() || !d.isTemplate)
                                   .toList();
 
+                              // Snapshots not yet linked to any template →
+                              // shown individually in the DECKS view.
+                              final unlinkedSnapshots = snapshots
+                                  .where((s) => s.templateRef == null)
+                                  .toList();
+
+                              // DECKS view = templates + orphan snapshots.
+                              // TOURNOIS view = every snapshot individually.
                               final deckList = _view == _DeckListView.templates
-                                  ? templates
+                                  ? [...templates, ...unlinkedSnapshots]
                                   : snapshots;
 
-                              // Update batch scores synchronously — the
-                              // FutureBuilder below picks it up this frame.
+                              // Update batch scores synchronously — load ALL
+                              // deck ids (templates + snapshots) so aggregate
+                              // computation in the inner builder has all data.
                               _updateScoresFutureIfNeeded(visibleDecks.toList());
 
                               return Column(
                                 children: [
                                   _buildViewToggle(
                                     context,
-                                    templatesCount: templates.length,
+                                    // DECKS count = distinct canonical entries
+                                    templatesCount: templates.length +
+                                        unlinkedSnapshots.length,
                                     snapshotsCount: snapshots.length,
                                   ),
                                   Expanded(
@@ -411,17 +457,37 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
                                                     (context, deckListIndex) {
                                                   final deckListItem =
                                                       deckList[deckListIndex];
+                                                  // In DECKS view, templates
+                                                  // get an aggregate score
+                                                  // summed across all linked
+                                                  // snapshots; unlinked
+                                                  // snapshots keep their own.
+                                                  final isTemplate =
+                                                      deckListItem.hasIsTemplate() &&
+                                                          deckListItem.isTemplate;
+                                                  final score = (_view ==
+                                                              _DeckListView
+                                                                  .templates &&
+                                                          isTemplate)
+                                                      ? _aggregateScore(
+                                                          deckListItem,
+                                                          snapshots,
+                                                          scoresMap)
+                                                      : scoresMap[
+                                                          deckListItem.deckId];
+
                                                   final child = DeckViewWidget(
                                                     key: Key(
                                                         'Keyp06_${deckListIndex}_of_${deckList.length}'),
                                                     deck: deckListItem,
-                                                    preloadedScore: scoresMap[deckListItem.deckId],
+                                                    preloadedScore: score,
                                                   );
-                                                  // Templates open a history
-                                                  // sheet showing every snapshot
-                                                  // linked via templateRef.
+                                                  // Only real templates open
+                                                  // the snapshot history sheet.
                                                   if (_view ==
-                                                      _DeckListView.templates) {
+                                                          _DeckListView
+                                                              .templates &&
+                                                      isTemplate) {
                                                     return GestureDetector(
                                                       behavior: HitTestBehavior
                                                           .opaque,
@@ -506,8 +572,8 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
         ),
         child: Row(
           children: [
-            chip('SNAPSHOTS', snapshotsCount, _DeckListView.snapshots),
-            chip('TEMPLATES', templatesCount, _DeckListView.templates),
+            chip('DECKS', templatesCount, _DeckListView.templates),
+            chip('TOURNOIS', snapshotsCount, _DeckListView.snapshots),
           ],
         ),
       ),
@@ -515,22 +581,20 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
   }
 
   Widget _buildEmptyForView(BuildContext context) {
-    final isTemplates = _view == _DeckListView.templates;
+    final isDecksView = _view == _DeckListView.templates;
     return Padding(
       padding: EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isTemplates ? Icons.bookmark_border : Icons.auto_awesome_outlined,
+            isDecksView ? Icons.style_outlined : Icons.auto_awesome_outlined,
             color: FlutterFlowTheme.of(context).secondaryText,
             size: 56,
           ),
           SizedBox(height: 12),
           Text(
-            isTemplates
-                ? 'No templates yet'
-                : 'No snapshots yet',
+            isDecksView ? 'Aucun deck' : 'Aucun tournoi',
             textAlign: TextAlign.center,
             style: FlutterFlowTheme.of(context).bodyMedium.override(
                   fontFamily: 'Cinzel Decorative',
@@ -540,9 +604,9 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
           ),
           SizedBox(height: 4),
           Text(
-            isTemplates
-                ? 'Promote any snapshot into a template from the tournament detail bottom sheet.'
-                : 'Import a Spicerack event or add a deck manually.',
+            isDecksView
+                ? 'Importe un tournoi Spicerack ou ajoute un deck manuellement.'
+                : 'Importe un tournoi Spicerack pour voir tes decks par tournoi.',
             textAlign: TextAlign.center,
             style: FlutterFlowTheme.of(context).bodySmall.override(
                   fontFamily: 'Noto Sans',
