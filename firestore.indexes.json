@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "games",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deckIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "tournaments",
       "queryScope": "COLLECTION",
       "fields": [
