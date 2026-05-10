@@ -153,39 +153,24 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
     };
   }
 
-  /// Produces one [_DeckGroup] per canonical deck family.
-  ///
-  /// Level-1 grouping: by templateRef chain (covers linked tournament snapshots).
-  /// Level-2 grouping: for roots with no linked children, group by
-  /// (crewmateId + name) so unlinked same-archetype snapshots merge into one.
+  /// Produces one [_DeckGroup] per canonical deck family by following the
+  /// `templateRef` chain (level-1 only). Standalone decks (no templateRef
+  /// links) each get their own entry — they are NOT merged by name, because
+  /// the name may be a generic default (e.g. "Nurgle V's Deck") shared across
+  /// unrelated decks played in different tournaments.
   List<_DeckGroup> _buildGroups(List<DecksRecord> decks) {
     final byId = {for (final d in decks) d.reference.id: d};
     final rootMap = _buildRootMap(decks);
 
-    // Level-1: group by root reference id
-    final l1 = <String, List<DecksRecord>>{};
+    // Group by root reference id
+    final groups = <String, List<DecksRecord>>{};
     for (final d in decks) {
-      l1.putIfAbsent(rootMap[d.reference.id]!, () => []).add(d);
+      groups.putIfAbsent(rootMap[d.reference.id]!, () => []).add(d);
     }
 
-    // Level-2: for singleton roots (no children linked to them), merge by name
-    final l2 = <String, List<DecksRecord>>{};
-    for (final entry in l1.entries) {
-      final rootId = entry.key;
-      final members = entry.value;
-      if (members.length == 1) {
-        // Standalone deck — secondary group by crewmateId + deck name
-        final d = members.first;
-        final key2 = '${d.crewmateId}||${d.name}';
-        l2.putIfAbsent(key2, () => []).addAll(members);
-      } else {
-        // Multi-member family from templateRef chain — keep as a unique group
-        l2[rootId] = members;
-      }
-    }
-
-    return l2.values.map((members) {
-      // Representative = the member with no templateRef in this set, or first
+    return groups.values.map((members) {
+      // Representative = the root of the chain (no templateRef, or parent
+      // outside the visible set)
       final rep = members.firstWhere(
         (d) => d.templateRef == null || !byId.containsKey(d.templateRef!.id),
         orElse: () => members.first,
