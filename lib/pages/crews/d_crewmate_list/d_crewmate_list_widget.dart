@@ -83,33 +83,40 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
             },
           ),
           title: AuthUserStreamWidget(
-            builder: (context) => FutureBuilder<CrewsRecord>(
-              future:
-                  CrewsRecord.getDocumentOnce(currentUserDocument!.crewRef!),
-              builder: (context, snapshot) {
-                // Customize what your widget looks like when it's loading.
-                if (!snapshot.hasData) {
-                  return Center(
-                    child: SizedBox(
-                      width: 50.0,
-                      height: 50.0,
-                      child: SpinKitFadingFour(
-                        color: Color(0xFFE6486F),
-                        size: 50.0,
-                      ),
-                    ),
-                  );
-                }
-                final textCrewsRecord = snapshot.data!;
+            builder: (context) {
+              final crewRef = currentUserDocument?.crewRef;
+              if (crewRef == null) {
                 return Text(
-                  valueOrDefault<String>(
-                    textCrewsRecord.name,
-                    'Crewmates',
-                  ),
+                  'Settings',
                   style: FlutterFlowTheme.of(context).titleLarge,
                 );
-              },
-            ),
+              }
+              return FutureBuilder<CrewsRecord>(
+                future: CrewsRecord.getDocumentOnce(crewRef),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return Center(
+                      child: SizedBox(
+                        width: 50.0,
+                        height: 50.0,
+                        child: SpinKitFadingFour(
+                          color: Color(0xFFE6486F),
+                          size: 50.0,
+                        ),
+                      ),
+                    );
+                  }
+                  final textCrewsRecord = snapshot.data!;
+                  return Text(
+                    valueOrDefault<String>(
+                      textCrewsRecord.name,
+                      'Crewmates',
+                    ),
+                    style: FlutterFlowTheme.of(context).titleLarge,
+                  );
+                },
+              );
+            },
           ),
           actions: [],
           centerTitle: true,
