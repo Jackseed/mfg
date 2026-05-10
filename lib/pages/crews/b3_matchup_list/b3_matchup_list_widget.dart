@@ -90,6 +90,28 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
   String? _lastCrewmateId;
   Future<_MatchupPageData>? _pageDataFuture;
 
+  // Tournament name cache (tournamentId → name, null while loading)
+  final Map<String, String?> _tournamentNames = {};
+
+  void _loadTournamentName(String tournId, DocumentReference? ref) {
+    if (_tournamentNames.containsKey(tournId)) return;
+    _tournamentNames[tournId] = null;
+    if (ref == null) return;
+    ref.get().then((doc) {
+      final name = (doc.data() as Map<String, dynamic>?)?['name'] as String?;
+      if (mounted) setState(() => _tournamentNames[tournId] = name);
+    }).catchError((_) {});
+  }
+
+  static String _formatMatchupDate(DateTime d, String locale) {
+    if (locale == 'fr') {
+      const m = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc'];
+      return '${d.day} ${m[d.month - 1]} ${d.year}';
+    }
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${m[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
   static final _colorIcons = {
     'W': FFIcons.kwhite,
     'U': FFIcons.kblue,
@@ -512,8 +534,62 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
                         isLeft: false, playerName: player2)),
               ],
             ),
+            _buildMatchupFooter(context, matchup, data),
           ],
         ),
+    );
+  }
+
+  Widget _buildMatchupFooter(
+      BuildContext context, MatchupsRecord matchup, _MatchupPageData data) {
+    final date = data.matchupDateMap[matchup.matchupId];
+    final tournId = matchup.tournamentId;
+    if (tournId.isNotEmpty) {
+      _loadTournamentName(tournId, matchup.tournamentRef);
+    }
+    final tournName = tournId.isNotEmpty ? _tournamentNames[tournId] : null;
+    final locale = FFLocalizations.of(context).languageCode;
+    final hasDate = date != null;
+    final hasTournament = tournName != null && tournName.isNotEmpty;
+    if (!hasDate && !hasTournament) return const SizedBox.shrink();
+
+    final dimStyle = TextStyle(
+      fontFamily: 'Noto Sans',
+      color: FlutterFlowTheme.of(context).primaryText.withOpacity(0.4),
+      fontSize: 10,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          if (hasTournament)
+            Flexible(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.emoji_events_outlined,
+                      size: 10,
+                      color: FlutterFlowTheme.of(context)
+                          .primaryText
+                          .withOpacity(0.4)),
+                  const SizedBox(width: 3),
+                  Flexible(
+                    child: Text(tournName,
+                        style: dimStyle,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1),
+                  ),
+                ],
+              ),
+            )
+          else
+            const SizedBox.shrink(),
+          if (hasDate)
+            Text(_formatMatchupDate(date, locale), style: dimStyle),
+        ],
+      ),
     );
   }
 
@@ -710,7 +786,9 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
             ),
             const SizedBox(height: 6),
             Text(
-              '${agg.total} ${agg.total == 1 ? "matchup" : "matchups"}',
+              FFLocalizations.of(context).languageCode == 'fr'
+                  ? '${agg.total} ${agg.total == 1 ? "partie" : "parties"}'
+                  : '${agg.total} ${agg.total == 1 ? "game" : "games"}',
               style: TextStyle(
                 fontFamily: 'Noto Sans',
                 color: FlutterFlowTheme.of(context)
@@ -835,7 +913,9 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${agg.total} ${agg.total == 1 ? "matchup" : "matchups"}',
+                    FFLocalizations.of(context).languageCode == 'fr'
+                  ? '${agg.total} ${agg.total == 1 ? "partie" : "parties"}'
+                  : '${agg.total} ${agg.total == 1 ? "game" : "games"}',
                     style: TextStyle(
                       fontFamily: 'Noto Sans',
                       color: FlutterFlowTheme.of(context)
