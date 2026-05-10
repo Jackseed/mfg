@@ -3,7 +3,7 @@ import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/custom_icons.dart';
-import '/page_component/deck_edit/deck_edit_widget.dart';
+import '/page_component/archetype_editor/archetype_editor_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -534,62 +534,8 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
                         isLeft: false, playerName: player2)),
               ],
             ),
-            _buildMatchupFooter(context, matchup, data),
           ],
         ),
-    );
-  }
-
-  Widget _buildMatchupFooter(
-      BuildContext context, MatchupsRecord matchup, _MatchupPageData data) {
-    final date = data.matchupDateMap[matchup.matchupId];
-    final tournId = matchup.tournamentId;
-    if (tournId.isNotEmpty) {
-      _loadTournamentName(tournId, matchup.tournamentRef);
-    }
-    final tournName = tournId.isNotEmpty ? _tournamentNames[tournId] : null;
-    final locale = FFLocalizations.of(context).languageCode;
-    final hasDate = date != null;
-    final hasTournament = tournName != null && tournName.isNotEmpty;
-    if (!hasDate && !hasTournament) return const SizedBox.shrink();
-
-    final dimStyle = TextStyle(
-      fontFamily: 'Noto Sans',
-      color: FlutterFlowTheme.of(context).primaryText.withOpacity(0.4),
-      fontSize: 10,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          if (hasTournament)
-            Flexible(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.emoji_events_outlined,
-                      size: 10,
-                      color: FlutterFlowTheme.of(context)
-                          .primaryText
-                          .withOpacity(0.4)),
-                  const SizedBox(width: 3),
-                  Flexible(
-                    child: Text(tournName,
-                        style: dimStyle,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1),
-                  ),
-                ],
-              ),
-            )
-          else
-            const SizedBox.shrink(),
-          if (hasDate)
-            Text(_formatMatchupDate(date, locale), style: dimStyle),
-        ],
-      ),
     );
   }
 
@@ -603,27 +549,33 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     final label = _deckLabel(deck);
     final colors = deck?.colors ?? [];
 
-    final avatar = deck != null
-        ? GestureDetector(
-            onTap: () => showDialog(
-              context: context,
-              builder: (dialogContext) => Dialog(
-                insetPadding: EdgeInsets.zero,
-                backgroundColor: Colors.transparent,
-                alignment: AlignmentDirectional(0.0, 0.0)
-                    .resolve(Directionality.of(context)),
-                child: GestureDetector(
-                  onTap: () => FocusScope.of(context).unfocus(),
-                  child: DeckEditWidget(
-                    title: FFLocalizations.of(context).getText('x8wz0s6u'),
-                    editedDeck: deck,
-                  ),
-                ),
+    Widget avatarWidget = _deckAvatar(context, deck, label);
+    if (deck != null) {
+      avatarWidget = Stack(
+        children: [
+          avatarWidget,
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: FlutterFlowTheme.of(context).secondary,
+                shape: BoxShape.circle,
               ),
-            ).then((_) => setState(() {})),
-            child: _deckAvatar(context, deck, label),
-          )
-        : _deckAvatar(context, null, label);
+              child: const Icon(Icons.edit, size: 9, color: Colors.white),
+            ),
+          ),
+        ],
+      );
+      avatarWidget = GestureDetector(
+        onTap: () =>
+            showArchetypeEditor(context, deck, onSaved: () => setState(() {})),
+        child: avatarWidget,
+      );
+    }
+    final avatar = avatarWidget;
 
     final scoreWidget = Text('$score',
         style: FlutterFlowTheme.of(context).headlineSmall.override(
@@ -986,6 +938,76 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
 
   // ─── Tab bodies ──────────────────────────────────────────────────────────────
 
+  /// Renders a grouped list of matchups, with section headers showing
+  /// "19 avr · Tournament Name" (or just "19 avr 2026" if no tournament).
+  Widget _buildGroupedMatchupList(
+      BuildContext context,
+      List<MatchupsRecord> matchups,
+      _MatchupPageData data) {
+    final locale = FFLocalizations.of(context).languageCode;
+
+    // Group by "YYYY-MM-DD|tournamentId"
+    final grouped = <String, List<MatchupsRecord>>{};
+    for (final m in matchups) {
+      final date = data.matchupDateMap[m.matchupId];
+      final dateKey = date != null
+          ? '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}'
+          : '0000-00-00';
+      final key = '$dateKey|${m.tournamentId}';
+      grouped.putIfAbsent(key, () => []).add(m);
+      if (m.tournamentId.isNotEmpty) {
+        _loadTournamentName(m.tournamentId, m.tournamentRef);
+      }
+    }
+
+    final keys = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    final items = <Widget>[];
+
+    for (final key in keys) {
+      final parts = key.split('|');
+      final dateStr = parts[0];
+      final tournId = parts.length > 1 ? parts[1] : '';
+
+      String headerLabel = '';
+      if (dateStr != '0000-00-00') {
+        final dp = dateStr.split('-');
+        final d = DateTime(
+            int.parse(dp[0]), int.parse(dp[1]), int.parse(dp[2]));
+        headerLabel = _formatMatchupDate(d, locale);
+      }
+      final tournName =
+          tournId.isNotEmpty ? _tournamentNames[tournId] : null;
+      if (tournName != null && tournName.isNotEmpty) {
+        headerLabel = headerLabel.isNotEmpty
+            ? '$headerLabel · $tournName'
+            : tournName;
+      }
+
+      if (headerLabel.isNotEmpty) {
+        items.add(Padding(
+          padding: const EdgeInsets.fromLTRB(4, 16, 0, 8),
+          child: Text(
+            headerLabel,
+            style: FlutterFlowTheme.of(context).headlineSmall.override(
+                  fontFamily: 'Cinzel Decorative',
+                  color: FlutterFlowTheme.of(context).primaryBackground,
+                  fontSize: 13,
+                ),
+          ),
+        ));
+      }
+
+      for (final m in grouped[key]!) {
+        items.add(_buildMatchupCard(context, m, data));
+      }
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+      children: items,
+    );
+  }
+
   Widget _buildPartiesTab(
       BuildContext context,
       List<MatchupsRecord> allMatchups,
@@ -994,11 +1016,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
 
     if (matchups.isEmpty) return _buildEmptyState(context);
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
-      itemCount: matchups.length,
-      itemBuilder: (ctx, i) => _buildMatchupCard(ctx, matchups[i], data),
-    );
+    return _buildGroupedMatchupList(context, matchups, data);
   }
 
   Widget _buildMatchupsTab(BuildContext context, List<MatchupsRecord> allMatchups,
@@ -1007,11 +1025,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     if (_selectedArchetype != null) {
       final agg = _selectedArchetype!;
       final filtered = _sorted(agg.matchups, data);
-      return ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
-        itemCount: filtered.length,
-        itemBuilder: (ctx, i) => _buildMatchupCard(ctx, filtered[i], data),
-      );
+      return _buildGroupedMatchupList(context, filtered, data);
     }
 
     final aggs = _computeArchetypeAggs(allMatchups, data);
@@ -1033,11 +1047,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     if (_selectedPlayer != null) {
       final agg = _selectedPlayer!;
       final filtered = _sorted(agg.matchups, data);
-      return ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
-        itemCount: filtered.length,
-        itemBuilder: (ctx, i) => _buildMatchupCard(ctx, filtered[i], data),
-      );
+      return _buildGroupedMatchupList(context, filtered, data);
     }
 
     final aggs = _computePlayerAggs(allMatchups, data);

@@ -3,6 +3,7 @@ import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/custom_icons.dart';
+import '/page_component/archetype_editor/archetype_editor_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -67,6 +68,29 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
     _model.dispose();
 
     super.dispose();
+  }
+
+  // Tournament name cache (tournamentId → name, null while loading)
+  final Map<String, String?> _tournamentNames = {};
+
+  void _loadTournamentName(String tournId, DocumentReference? ref) {
+    if (_tournamentNames.containsKey(tournId)) return;
+    _tournamentNames[tournId] = null;
+    if (ref == null) return;
+    ref.get().then((doc) {
+      final name =
+          (doc.data() as Map<String, dynamic>?)?['name'] as String?;
+      if (mounted) setState(() => _tournamentNames[tournId] = name);
+    }).catchError((_) {});
+  }
+
+  static String _formatGameDate(DateTime d, String locale) {
+    if (locale == 'fr') {
+      const m = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc'];
+      return '${d.day} ${m[d.month - 1]} ${d.year}';
+    }
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${m[d.month - 1]} ${d.day}, ${d.year}';
   }
 
   static const _colorIcons = {
@@ -212,16 +236,60 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
                           return _buildEmptyGames(context);
                         }
 
-                        // Group by calendar date (year-month-day)
+                        // Group by "YYYY-MM-DD|tournamentId"
+                        final locale = FFLocalizations.of(context).languageCode;
                         final grouped = <String, List<GamesRecord>>{};
                         for (final g in games) {
                           if (g.date == null) continue;
-                          final key =
+                          final dateKey =
                               '${g.date!.year}-${g.date!.month.toString().padLeft(2, '0')}-${g.date!.day.toString().padLeft(2, '0')}';
+                          final tournId = g.tournamentId;
+                          final key = '$dateKey|$tournId';
                           grouped.putIfAbsent(key, () => []).add(g);
+                          if (tournId.isNotEmpty) {
+                            _loadTournamentName(tournId, g.tournamentRef);
+                          }
                         }
-                        final dateKeys = grouped.keys.toList()
+                        final groupKeys = grouped.keys.toList()
                           ..sort((a, b) => b.compareTo(a));
+
+                        // Build flat item list with section headers
+                        final items = <Widget>[];
+                        for (final key in groupKeys) {
+                          final parts = key.split('|');
+                          final dateStr = parts[0];
+                          final tournId =
+                              parts.length > 1 ? parts[1] : '';
+                          final dp = dateStr.split('-');
+                          final d = DateTime(int.parse(dp[0]),
+                              int.parse(dp[1]), int.parse(dp[2]));
+                          String headerLabel = _formatGameDate(d, locale);
+                          final tournName = tournId.isNotEmpty
+                              ? _tournamentNames[tournId]
+                              : null;
+                          if (tournName != null && tournName.isNotEmpty) {
+                            headerLabel = '$headerLabel · $tournName';
+                          }
+                          items.add(Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(4, 16, 0, 8),
+                            child: Text(
+                              headerLabel,
+                              style: FlutterFlowTheme.of(context)
+                                  .headlineSmall
+                                  .override(
+                                    fontFamily: 'Cinzel Decorative',
+                                    color: FlutterFlowTheme.of(context)
+                                        .primaryBackground,
+                                    fontSize: 13,
+                                  ),
+                            ),
+                          ));
+                          for (final g in grouped[key]!) {
+                            items.add(
+                                _buildGameCard(context, g, deckById));
+                          }
+                        }
 
                         return Container(
                           width: double.infinity,
@@ -234,41 +302,10 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
                               end: AlignmentDirectional(0, 1.0),
                             ),
                           ),
-                          child: ListView.builder(
+                          child: ListView(
                             padding:
                                 const EdgeInsets.fromLTRB(16, 68, 16, 110),
-                            itemCount: dateKeys.length,
-                            itemBuilder: (ctx, i) {
-                              final key = dateKeys[i];
-                              final dayGames = grouped[key]!;
-                              final firstDate = dayGames.first.date!;
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(4, 16, 0, 8),
-                                    child: Text(
-                                      dateTimeFormat(
-                                        'MMMMEEEEd',
-                                        firstDate,
-                                        locale: FFLocalizations.of(context).languageCode,
-                                      ),
-                                      style: FlutterFlowTheme.of(context)
-                                          .headlineSmall
-                                          .override(
-                                            fontFamily: 'Cinzel Decorative',
-                                            color: FlutterFlowTheme.of(context)
-                                                .primaryBackground,
-                                            fontSize: 16,
-                                          ),
-                                    ),
-                                  ),
-                                  ...dayGames.map(
-                                    (g) => _buildGameCard(context, g, deckById),
-                                  ),
-                                ],
-                              );
-                            },
+                            children: items,
                           ),
                         );
                       },
@@ -444,9 +481,9 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
             : 'Unknown';
     final colors = deck?.colors ?? [];
 
-    Widget avatar;
+    Widget avatarWidget;
     if (deck != null && deck.avatarUrl.isNotEmpty) {
-      avatar = Container(
+      avatarWidget = Container(
         width: 36,
         height: 36,
         clipBehavior: Clip.antiAlias,
@@ -458,7 +495,7 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
         ),
       );
     } else if (colors.isNotEmpty) {
-      avatar = Container(
+      avatarWidget = Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
@@ -483,8 +520,35 @@ class _C2GameListWidgetState extends State<C2GameListWidget> {
         ),
       );
     } else {
-      avatar = _buildInitialsAvatar(context, label);
+      avatarWidget = _buildInitialsAvatar(context, label);
     }
+
+    if (deck != null) {
+      avatarWidget = Stack(
+        children: [
+          avatarWidget,
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: FlutterFlowTheme.of(context).secondary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.edit, size: 9, color: Colors.white),
+            ),
+          ),
+        ],
+      );
+      avatarWidget = GestureDetector(
+        onTap: () => showArchetypeEditor(context, deck,
+            onSaved: () => setState(() {})),
+        child: avatarWidget,
+      );
+    }
+    final avatar = avatarWidget;
 
     final nameWidget = Text(
       label,
