@@ -93,18 +93,31 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
   String? _lastCrewmateId;
   Future<_MatchupPageData>? _pageDataFuture;
 
-  // Tournament name cache (tournamentId → name, null while loading).
-  // Dates come from games already loaded in _loadPageData — no async needed.
+  // Tournament name + date cache (loaded together in one Firestore read).
+  // Dates from games in tournamentDateMap take priority; these fill gaps for
+  // imported matchups that have no associated GamesRecord.
   final Map<String, String?> _tournamentNames = {};
+  final Map<String, DateTime?> _tournamentDates = {};
 
-  void _loadTournamentName(String tournId, DocumentReference? ref) {
+  void _loadTournamentInfo(String tournId, DocumentReference? ref) {
     if (_tournamentNames.containsKey(tournId)) return;
     _tournamentNames[tournId] = null;
+    _tournamentDates[tournId] = null;
     if (ref == null) return;
     ref.get().then((doc) {
-      final name =
-          (doc.data() as Map<String, dynamic>?)?['name'] as String?;
-      if (mounted) setState(() => _tournamentNames[tournId] = name);
+      final d = doc.data() as Map<String, dynamic>?;
+      final name = d?['name'] as String?;
+      DateTime? date;
+      final ts = d?['date'];
+      if (ts is DateTime) {
+        date = ts;
+      } else if (ts != null) {
+        try { date = (ts as dynamic).toDate() as DateTime; } catch (_) {}
+      }
+      if (mounted) setState(() {
+        _tournamentNames[tournId] = name;
+        _tournamentDates[tournId] = date;
+      });
     }).catchError((_) {});
   }
 
@@ -279,11 +292,12 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     return 'Unknown';
   }
 
-  /// Sort: newest first, then round descending.
+  /// Returns the best date for a matchup: game-based (sync) then tournament doc (async).
   DateTime? _matchupDate(MatchupsRecord m, _MatchupPageData data) =>
       data.matchupDateMap[m.matchupId.isNotEmpty ? m.matchupId : '__']
           ?? data.matchupDateMap[m.reference.id]
-          ?? (m.tournamentId.isNotEmpty ? data.tournamentDateMap[m.tournamentId] : null);
+          ?? (m.tournamentId.isNotEmpty ? data.tournamentDateMap[m.tournamentId] : null)
+          ?? (m.tournamentId.isNotEmpty ? _tournamentDates[m.tournamentId] : null);
 
   List<MatchupsRecord> _sorted(
       List<MatchupsRecord> raw, _MatchupPageData data) {
@@ -981,7 +995,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
       final key = '$dateKey|${m.tournamentId}';
       grouped.putIfAbsent(key, () => []).add(m);
       if (m.tournamentId.isNotEmpty) {
-        _loadTournamentName(m.tournamentId, m.tournamentRef);
+        _loadTournamentInfo(m.tournamentId, m.tournamentRef);
       }
     }
 
