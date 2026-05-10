@@ -459,9 +459,9 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     final resultText = result == null
         ? '—'
         : result > 0
-            ? FFLocalizations.of(context).getVariableText(enText: 'WIN', frText: 'VIC')
+            ? FFLocalizations.of(context).getVariableText(enText: 'WIN', frText: 'VICTOIRE')
             : result < 0
-                ? FFLocalizations.of(context).getVariableText(enText: 'LOSS', frText: 'DEF')
+                ? FFLocalizations.of(context).getVariableText(enText: 'LOSS', frText: 'DÉFAITE')
                 : FFLocalizations.of(context).getVariableText(enText: 'DRAW', frText: 'NUL');
 
     return Container(
@@ -527,9 +527,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     final label = _deckLabel(deck);
     final colors = deck?.colors ?? [];
 
-    final isCurrentUser =
-        deck != null && deck.crewmateId == currentUserDocument?.crewmateRef?.id;
-    final avatar = isCurrentUser
+    final avatar = deck != null
         ? GestureDetector(
             onTap: () => showDialog(
               context: context,
@@ -549,7 +547,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
             ).then((_) => setState(() {})),
             child: _deckAvatar(context, deck, label),
           )
-        : _deckAvatar(context, deck, label);
+        : _deckAvatar(context, null, label);
 
     final scoreWidget = Text('$score',
         style: FlutterFlowTheme.of(context).headlineSmall.override(
