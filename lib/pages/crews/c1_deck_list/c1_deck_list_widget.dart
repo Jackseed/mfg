@@ -4,21 +4,64 @@ import '/backend/schema/structs/index.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
-import '/flutter_flow/flutter_flow_widgets.dart';
 import '/page_component/deck_form/deck_form_widget.dart';
 import '/small_components/deck_view/deck_view_widget.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'c1_deck_list_model.dart';
 export 'c1_deck_list_model.dart';
 
-/// View mode for the deck list. Templates are the player's canonical decks
-/// (`isTemplate: true`); snapshots are the per-tournament imports (default).
-enum _DeckListView { snapshots, templates }
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// One canonical "deck" entry in the DECKS view.
+/// [representative] is the root of the templateRef chain (shown as the card).
+/// [members] is the full family (root + all linked snapshots).
+class _DeckGroup {
+  final DecksRecord representative;
+  final List<DecksRecord> members;
+  const _DeckGroup({required this.representative, required this.members});
+}
+
+/// Mutable score accumulator used during per-tournament loading.
+class _MutableScore {
+  int wins = 0, losses = 0, matchWins = 0, matchLosses = 0;
+
+  void addGame(int my, int opp) {
+    wins += my;
+    losses += opp;
+    if (my > opp) matchWins++;
+    else if (my < opp) matchLosses++;
+  }
+
+  DeckScoreStruct toStruct() {
+    final total = wins + losses;
+    return DeckScoreStruct(
+      wins: wins,
+      losses: losses,
+      matchWins: matchWins,
+      matchLosses: matchLosses,
+      winrate: total > 0 ? wins / total.toDouble() : 0.0,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// View enum
+// ---------------------------------------------------------------------------
+
+/// DECKS = one card per canonical deck (grouped by templateRef chain).
+/// TOURNOIS = one card per tournament participation.
+enum _DeckListView { decks, tournois }
+
+// ---------------------------------------------------------------------------
+// Widget
+// ---------------------------------------------------------------------------
 
 class C1DeckListWidget extends StatefulWidget {
   const C1DeckListWidget({Key? key}) : super(key: key);
@@ -29,27 +72,29 @@ class C1DeckListWidget extends StatefulWidget {
 
 class _C1DeckListWidgetState extends State<C1DeckListWidget> {
   late C1DeckListModel _model;
-
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
-  /// Currently selected view: templates/merged (default) or all snapshots.
-  _DeckListView _view = _DeckListView.templates;
+  _DeckListView _view = _DeckListView.decks;
 
-  // Lazy-loaded set of crewmate IDs that belong to actual crew members
-  // (those with userReference set). Opponents imported from tournaments have
-  // no userReference and are excluded from the deck list.
+  // ── Member IDs ────────────────────────────────────────────────────────────
   Future<Set<String>>? _memberIdsFuture;
 
-  // Batch-loaded scores for all visible decks — replaces N individual queries.
+  // ── DECKS view: aggregate scores keyed by deckId ─────────────────────────
   Future<Map<String, DeckScoreStruct>>? _scoresFuture;
-  // Sorted deck IDs used for the last score load; prevents redundant reloads.
   List<String> _scoredDeckIds = [];
+
+  // ── TOURNOIS view: per-tournament scores keyed by deck reference.id ───────
+  Future<Map<String, DeckScoreStruct>>? _tournamentScoresFuture;
+  List<String> _scoredSnapshotRefIds = [];
+
+  // ── TOURNOIS view: tournament name + date, keyed by tournamentId ──────────
+  Future<Map<String, TournamentsRecord>>? _tournamentInfoFuture;
+  List<String> _loadedTournamentIds = [];
 
   @override
   void initState() {
     super.initState();
     _model = createModel(context, () => C1DeckListModel());
-
     logFirebaseEvent('screen_view', parameters: {'screen_name': 'C1_DeckList'});
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
@@ -57,25 +102,13 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
   @override
   void dispose() {
     _model.dispose();
-
     super.dispose();
   }
 
-  /// Returns the set of crewmate document IDs that should be visible in the
-  /// deck list for the current user:
-  ///
-  /// 1. ALL crewmates across every crew where `userId == currentUserUid`
-  ///    (covers tournament org-crews created by Spicerack import — the user
-  ///    may have one crewmate per org-crew, each with a different doc ID).
-  /// 2. All crewmates in the user's personal crew that have a `userReference`
-  ///    (real friends, not tournament opponents).
+  // ── Member IDs ─────────────────────────────────────────────────────────────
   Future<Set<String>> _fetchMemberCrewmateIds() async {
     final Set<String> ids = {};
-    final uid = currentUserUid;
 
-    // Collection-group query: find every crewmate doc that belongs to the
-    // current user via userReference (set by import + manual crew join).
-    // Note: crewmates.userId = Spicerack integer ID, NOT the Firebase UID.
     if (currentUserReference != null) {
       final snap = await FirebaseFirestore.instance
           .collectionGroup('crewmates')
@@ -84,16 +117,12 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
       ids.addAll(snap.docs.map((d) => d.id));
     }
 
-    // Personal crew: include ALL crewmates (userReference may not be set on
-    // older data — don't filter it out or the user's own decks disappear).
     final crewRef = currentUserDocument?.crewRef;
     if (crewRef != null) {
       final snap = await crewRef.collection('crewmates').get();
       ids.addAll(snap.docs.map((d) => d.id));
     }
 
-    // Fallback: always include the user's own crewmate doc even when the
-    // collection-group query and crew query both come up empty (pre-import data).
     if (currentUserDocument?.crewmateRef != null) {
       ids.add(currentUserDocument!.crewmateRef!.id);
     }
@@ -101,9 +130,73 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
     return ids;
   }
 
-  /// Fetches all matchups that involve any of [deckIds] in one batch query
-  /// (using arrayContainsAny, max 30 per chunk) and computes BO3 + game stats
-  /// for each deck. Much faster than one query per deck.
+  // ── Grouping ───────────────────────────────────────────────────────────────
+
+  /// Builds the canonical "root" for each deck by following its templateRef
+  /// chain to the top. Decks whose templateRef points outside [decks] are
+  /// treated as roots. Cycles are broken by a visited set.
+  Map<String, String> _buildRootMap(List<DecksRecord> decks) {
+    final byId = {for (final d in decks) d.reference.id: d};
+
+    String findRoot(String id, Set<String> visited) {
+      if (visited.contains(id)) return id; // cycle guard
+      visited.add(id);
+      final deck = byId[id];
+      if (deck == null || deck.templateRef == null) return id;
+      final parentId = deck.templateRef!.id;
+      if (!byId.containsKey(parentId)) return id; // parent outside visible set
+      return findRoot(parentId, visited);
+    }
+
+    return {
+      for (final d in decks) d.reference.id: findRoot(d.reference.id, {}),
+    };
+  }
+
+  /// Produces one [_DeckGroup] per canonical deck family.
+  ///
+  /// Level-1 grouping: by templateRef chain (covers linked tournament snapshots).
+  /// Level-2 grouping: for roots with no linked children, group by
+  /// (crewmateId + name) so unlinked same-archetype snapshots merge into one.
+  List<_DeckGroup> _buildGroups(List<DecksRecord> decks) {
+    final byId = {for (final d in decks) d.reference.id: d};
+    final rootMap = _buildRootMap(decks);
+
+    // Level-1: group by root reference id
+    final l1 = <String, List<DecksRecord>>{};
+    for (final d in decks) {
+      l1.putIfAbsent(rootMap[d.reference.id]!, () => []).add(d);
+    }
+
+    // Level-2: for singleton roots (no children linked to them), merge by name
+    final l2 = <String, List<DecksRecord>>{};
+    for (final entry in l1.entries) {
+      final rootId = entry.key;
+      final members = entry.value;
+      if (members.length == 1) {
+        // Standalone deck — secondary group by crewmateId + deck name
+        final d = members.first;
+        final key2 = '${d.crewmateId}||${d.name}';
+        l2.putIfAbsent(key2, () => []).addAll(members);
+      } else {
+        // Multi-member family from templateRef chain — keep as a unique group
+        l2[rootId] = members;
+      }
+    }
+
+    return l2.values.map((members) {
+      // Representative = the member with no templateRef in this set, or first
+      final rep = members.firstWhere(
+        (d) => d.templateRef == null || !byId.containsKey(d.templateRef!.id),
+        orElse: () => members.first,
+      );
+      return _DeckGroup(representative: rep, members: members);
+    }).toList()
+      ..sort((a, b) => a.representative.name.compareTo(b.representative.name));
+  }
+
+  // ── Score loading: DECKS (aggregate per deckId) ───────────────────────────
+
   Future<Map<String, DeckScoreStruct>> _loadScores(List<String> deckIds) async {
     if (deckIds.isEmpty) return {};
 
@@ -112,7 +205,6 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
     final matchWins = <String, int>{for (final id in deckIds) id: 0};
     final matchLosses = <String, int>{for (final id in deckIds) id: 0};
 
-    // Firestore arrayContainsAny allows max 30 values → chunk as needed.
     for (int i = 0; i < deckIds.length; i += 30) {
       final chunk = deckIds.sublist(i, (i + 30).clamp(0, deckIds.length));
       try {
@@ -125,8 +217,7 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
           final matchup = doc.data();
           final rawScores = matchup['scores'];
           if (rawScores == null || rawScores is! List) continue;
-          final matchScores =
-              (rawScores as List).cast<Map<String, dynamic>>();
+          final matchScores = (rawScores as List).cast<Map<String, dynamic>>();
 
           for (final entry in matchScores) {
             final thisDeckId = entry['deckId'] as String?;
@@ -139,11 +230,8 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
 
             wins[thisDeckId] = wins[thisDeckId]! + myScore;
             losses[thisDeckId] = losses[thisDeckId]! + oppScore;
-            if (myScore > oppScore) {
-              matchWins[thisDeckId] = matchWins[thisDeckId]! + 1;
-            } else if (myScore < oppScore) {
-              matchLosses[thisDeckId] = matchLosses[thisDeckId]! + 1;
-            }
+            if (myScore > oppScore) matchWins[thisDeckId] = matchWins[thisDeckId]! + 1;
+            else if (myScore < oppScore) matchLosses[thisDeckId] = matchLosses[thisDeckId]! + 1;
           }
         }
       } catch (_) {}
@@ -151,36 +239,31 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
 
     final result = <String, DeckScoreStruct>{};
     for (final id in deckIds) {
-      final w = wins[id]!;
-      final l = losses[id]!;
-      final total = w + l;
+      final w = wins[id]!, l = losses[id]!, total = w + l;
       result[id] = DeckScoreStruct(
-        wins: w,
-        losses: l,
+        wins: w, losses: l,
         winrate: total > 0 ? w / total.toDouble() : 0.0,
-        matchWins: matchWins[id],
-        matchLosses: matchLosses[id],
+        matchWins: matchWins[id], matchLosses: matchLosses[id],
       );
     }
     return result;
   }
 
-  /// Aggregates scores for a template by summing across the template's own
-  /// deckId AND all linked snapshot deckIds. Handles both the fully-merged
-  /// case (all share one deckId) and the partially-merged case (mixed ids).
-  DeckScoreStruct _aggregateScore(
-    DecksRecord template,
-    List<DecksRecord> allSnapshots,
+  void _updateScoresFutureIfNeeded(List<DecksRecord> decks) {
+    final newIds = (decks.map((d) => d.deckId).where((id) => id.isNotEmpty).toSet().toList()..sort());
+    if (newIds.join(',') == _scoredDeckIds.join(',')) return;
+    _scoredDeckIds = newIds;
+    _scoresFuture = _loadScores(List.from(newIds));
+  }
+
+  /// Aggregates rawScores for all members of a [_DeckGroup] by summing
+  /// across their distinct deckIds (no double-counting since deckIds are
+  /// deduplicated).
+  DeckScoreStruct _aggregateGroupScore(
+    _DeckGroup group,
     Map<String, DeckScoreStruct> rawScores,
   ) {
-    final ids = <String>{};
-    if (template.deckId.isNotEmpty) ids.add(template.deckId);
-    for (final s in allSnapshots) {
-      if (s.templateRef?.id == template.reference.id &&
-          s.deckId.isNotEmpty) {
-        ids.add(s.deckId);
-      }
-    }
+    final ids = {for (final d in group.members) if (d.deckId.isNotEmpty) d.deckId};
     int w = 0, l = 0, mw = 0, ml = 0;
     for (final id in ids) {
       final s = rawScores[id];
@@ -192,38 +275,128 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
     }
     final total = w + l;
     return DeckScoreStruct(
-      wins: w,
-      losses: l,
-      matchWins: mw,
-      matchLosses: ml,
+      wins: w, losses: l, matchWins: mw, matchLosses: ml,
       winrate: total > 0 ? w / total.toDouble() : 0.0,
     );
   }
 
-  /// Updates [_scoresFuture] synchronously during build if the visible deck
-  /// list changed. Safe to call from build() — mutates the field directly
-  /// without setState; the FutureBuilder below picks up the new future in the
-  /// same build pass, no extra frame needed.
-  void _updateScoresFutureIfNeeded(List<DecksRecord> decks) {
-    final newIds = (decks
-            .map((d) => d.deckId)
-            .where((id) => id.isNotEmpty)
-            .toList()
-          ..sort());
-    if (newIds.join(',') == _scoredDeckIds.join(',')) return;
-    _scoredDeckIds = newIds;
-    _scoresFuture = _loadScores(List.from(newIds));
+  // ── Score loading: TOURNOIS (per tournament, keyed by deck reference.id) ──
+
+  Future<Map<String, DeckScoreStruct>> _loadTournamentScores(
+    List<DecksRecord> snapshots,
+  ) async {
+    if (snapshots.isEmpty) return {};
+
+    // Group snapshots by tournamentId for batch queries
+    final byTournament = <String, List<DecksRecord>>{};
+    for (final s in snapshots) {
+      if (s.tournamentId.isEmpty) continue;
+      byTournament.putIfAbsent(s.tournamentId, () => []).add(s);
+    }
+
+    // Accumulators keyed by deck reference.id
+    final accum = <String, _MutableScore>{
+      for (final s in snapshots) s.reference.id: _MutableScore(),
+    };
+
+    for (final entry in byTournament.entries) {
+      final tournamentId = entry.key;
+      final tDecks = entry.value;
+      final deckIds = tDecks.map((d) => d.deckId).where((id) => id.isNotEmpty).toSet().toList();
+      if (deckIds.isEmpty) continue;
+
+      for (int i = 0; i < deckIds.length; i += 30) {
+        final chunk = deckIds.sublist(i, (i + 30).clamp(0, deckIds.length));
+        try {
+          final snap = await FirebaseFirestore.instance
+              .collection('matchups')
+              .where('tournamentId', isEqualTo: tournamentId)
+              .where('deckIds', arrayContainsAny: chunk)
+              .get();
+
+          for (final doc in snap.docs) {
+            final matchup = doc.data();
+            final rawScores = matchup['scores'];
+            if (rawScores == null || rawScores is! List) continue;
+            final matchScores = (rawScores as List).cast<Map<String, dynamic>>();
+
+            for (final scoreEntry in matchScores) {
+              final thisDeckId = scoreEntry['deckId'] as String?;
+              if (thisDeckId == null || !deckIds.contains(thisDeckId)) continue;
+
+              final myScore = (scoreEntry['score'] as num?)?.toInt() ?? 0;
+              final oppScore = matchScores
+                  .where((s) => s['deckId'] != thisDeckId)
+                  .fold(0, (s, e) => s + ((e['score'] as num?)?.toInt() ?? 0));
+
+              // Update every snapshot in this tournament that has this deckId
+              for (final tDeck in tDecks.where((d) => d.deckId == thisDeckId)) {
+                accum[tDeck.reference.id]?.addGame(myScore, oppScore);
+              }
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    return {for (final e in accum.entries) e.key: e.value.toStruct()};
   }
+
+  void _updateTournamentScoresFutureIfNeeded(List<DecksRecord> snapshots) {
+    final newIds = (snapshots.map((s) => s.reference.id).toList()..sort());
+    if (newIds.join(',') == _scoredSnapshotRefIds.join(',')) return;
+    _scoredSnapshotRefIds = newIds;
+    _tournamentScoresFuture = _loadTournamentScores(List.from(snapshots));
+  }
+
+  // ── Tournament info loading ────────────────────────────────────────────────
+
+  Future<Map<String, TournamentsRecord>> _loadTournamentInfo(
+    List<String> tournamentIds,
+  ) async {
+    if (tournamentIds.isEmpty) return {};
+    final result = <String, TournamentsRecord>{};
+    for (final id in tournamentIds) {
+      try {
+        // Tournament document ID = tournamentId field value (convention)
+        final doc = await FirebaseFirestore.instance
+            .collection('tournaments')
+            .doc(id)
+            .get();
+        if (doc.exists) {
+          result[id] = TournamentsRecord.fromSnapshot(doc);
+        } else {
+          // Fallback: field-based query
+          final snap = await FirebaseFirestore.instance
+              .collection('tournaments')
+              .where('tournamentId', isEqualTo: id)
+              .limit(1)
+              .get();
+          if (snap.docs.isNotEmpty) {
+            result[id] = TournamentsRecord.fromSnapshot(snap.docs.first);
+          }
+        }
+      } catch (_) {}
+    }
+    return result;
+  }
+
+  void _updateTournamentInfoIfNeeded(List<DecksRecord> snapshots) {
+    final ids = snapshots.map((s) => s.tournamentId).where((id) => id.isNotEmpty).toSet().toList()..sort();
+    if (ids.join(',') == _loadedTournamentIds.join(',')) return;
+    _loadedTournamentIds = ids;
+    _tournamentInfoFuture = _loadTournamentInfo(ids);
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     if (isiOS) {
-      SystemChrome.setSystemUIOverlayStyle(
-        SystemUiOverlayStyle(
-          statusBarBrightness: Theme.of(context).brightness,
-          systemStatusBarContrastEnforced: true,
-        ),
-      );
+      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+        statusBarBrightness: Theme.of(context).brightness,
+        systemStatusBarContrastEnforced: true,
+      ));
     }
 
     context.watch<FFAppState>();
@@ -235,313 +408,308 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
         return FutureBuilder<Set<String>>(
           future: _memberIdsFuture ??= _fetchMemberCrewmateIds(),
           builder: (context, crewSnap) {
-            // memberIds == null → still loading
             final memberIds = crewSnap.data;
-
-            // Stable cache key: forces StreamRequestManager to create a new
-            // stream when the member ID set changes after the future resolves.
             final cacheKey = memberIds == null
                 ? '__loading__'
                 : '${crewId}_${(memberIds.toList()..sort()).join(',')}';
 
             return StreamBuilder<List<DecksRecord>>(
-        stream: _model.deckListQuery(
+              stream: _model.deckListQuery(
                 uniqueQueryKey: cacheKey,
-          requestFn: () {
-                  if (memberIds == null) {
-                    // Future not yet resolved — hold off, show empty.
-                    return Stream.value(<DecksRecord>[]);
-                  }
+                requestFn: () {
+                  if (memberIds == null) return Stream.value(<DecksRecord>[]);
                   if (crewId.isNotEmpty) {
-                    // Real crew: fetch all crew decks, filter by real members
-                    // in-memory below.
                     return queryDecksRecord(
-                      queryBuilder: (q) =>
-                          q.where('crewId', isEqualTo: crewId),
+                      queryBuilder: (q) => q.where('crewId', isEqualTo: crewId),
                     );
                   } else if (memberIds.isNotEmpty) {
-                    // Solo import user: query directly by their crewmate IDs
-                    // (one per org-crew they participated in, max 30).
                     return queryDecksRecord(
-                      queryBuilder: (q) => q.where('crewmateId',
-                          whereIn: memberIds.take(30).toList()),
+                      queryBuilder: (q) => q.where(
+                        'crewmateId',
+                        whereIn: memberIds.take(30).toList(),
+                      ),
                     );
                   } else {
                     return Stream.value(<DecksRecord>[]);
                   }
-          },
-        ),
-        builder: (context, snapshot) {
-          // Show spinner while member IDs are still loading (prevents the
-          // "pas de deck" flash caused by the empty Stream.value([])).
-          if (memberIds == null || !snapshot.hasData) {
-            return Scaffold(
-              backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-              body: Center(
-                child: SizedBox(
-                  width: 50.0,
-                  height: 50.0,
-                  child: SpinKitFadingFour(
-                    color: Color(0xFFE6486F),
-                    size: 50.0,
-                  ),
-                ),
+                },
               ),
+              builder: (context, snapshot) {
+                if (memberIds == null || !snapshot.hasData) {
+                  return Scaffold(
+                    backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
+                    body: const Center(
+                      child: SizedBox(
+                        width: 50, height: 50,
+                        child: SpinKitFadingFour(color: Color(0xFFE6486F), size: 50),
+                      ),
+                    ),
+                  );
+                }
+
+                final allDecks = snapshot.data!;
+
+                // Filter to visible members only (real crew case)
+                final visibleDecks = (crewId.isNotEmpty && memberIds != null)
+                    ? allDecks.where((d) => d.crewmateId.isEmpty || memberIds.contains(d.crewmateId)).toList()
+                    : allDecks;
+
+                // Build grouped view for DECKS tab
+                final groups = _buildGroups(visibleDecks.toList());
+
+                // Keep all snapshots for TOURNOIS tab (sorted by name)
+                final allSnapshots = List<DecksRecord>.from(visibleDecks)
+                  ..sort((a, b) => a.name.compareTo(b.name));
+
+                // Update score futures synchronously
+                _updateScoresFutureIfNeeded(visibleDecks.toList());
+                if (_view == _DeckListView.tournois) {
+                  _updateTournamentScoresFutureIfNeeded(allSnapshots);
+                  _updateTournamentInfoIfNeeded(allSnapshots);
+                }
+
+                return GestureDetector(
+                  onTap: () => _model.unfocusNode.canRequestFocus
+                      ? FocusScope.of(context).requestFocus(_model.unfocusNode)
+                      : FocusScope.of(context).unfocus(),
+                  child: Scaffold(
+                    key: scaffoldKey,
+                    backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
+                    floatingActionButton: Builder(
+                      builder: (context) => FloatingActionButton.extended(
+                        onPressed: () async {
+                          logFirebaseEvent('C1_DECK_LIST_FloatingActionButton_5531ea');
+                          await showDialog(
+                            context: context,
+                            builder: (dialogContext) => Dialog(
+                              insetPadding: EdgeInsets.zero,
+                              backgroundColor: Colors.transparent,
+                              alignment: AlignmentDirectional(0, 0).resolve(Directionality.of(context)),
+                              child: GestureDetector(
+                                onTap: () => _model.unfocusNode.canRequestFocus
+                                    ? FocusScope.of(context).requestFocus(_model.unfocusNode)
+                                    : FocusScope.of(context).unfocus(),
+                                child: DeckFormWidget(),
+                              ),
+                            ),
+                          ).then((_) => setState(() {}));
+                        },
+                        backgroundColor: FlutterFlowTheme.of(context).primary,
+                        icon: const Icon(Icons.add),
+                        elevation: 8,
+                        label: Text(
+                          FFLocalizations.of(context).getText('xyd4oyif' /* Add deck */),
+                          style: FlutterFlowTheme.of(context).bodyMedium.override(
+                            fontFamily: 'Noto Sans',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    appBar: AppBar(
+                      backgroundColor: FlutterFlowTheme.of(context).primary,
+                      automaticallyImplyLeading: false,
+                      leading: FlutterFlowIconButton(
+                        borderColor: Colors.transparent,
+                        borderRadius: 30,
+                        borderWidth: 1,
+                        buttonSize: 60,
+                        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 30),
+                        onPressed: () async {
+                          logFirebaseEvent('C1_DECK_LIST_arrow_back_rounded_ICN_ON_T');
+                          context.pop();
+                        },
+                      ),
+                      title: Text(
+                        FFLocalizations.of(context).getText('8oyacj3o' /* DECKS */),
+                        style: FlutterFlowTheme.of(context).titleLarge,
+                      ),
+                      centerTitle: true,
+                      elevation: 2,
+                    ),
+                    body: SafeArea(
+                      top: true,
+                      child: Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF323236), Color(0xFFE6486F)],
+                            stops: [0, 1],
+                            begin: AlignmentDirectional(0, -1),
+                            end: AlignmentDirectional(0, 1),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Column(
+                            children: [
+                              _buildViewToggle(
+                                context,
+                                decksCount: groups.length,
+                                tournoisCount: allSnapshots.length,
+                              ),
+                              Expanded(
+                                child: _view == _DeckListView.decks
+                                    ? _buildDecksView(context, groups)
+                                    : _buildTournoisView(context, allSnapshots),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             );
-          }
-          List<DecksRecord> c1DeckListDecksRecordList = snapshot.data!;
-          return GestureDetector(
-            onTap: () => _model.unfocusNode.canRequestFocus
-                ? FocusScope.of(context).requestFocus(_model.unfocusNode)
-                : FocusScope.of(context).unfocus(),
-            child: Scaffold(
-              key: scaffoldKey,
-              backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-              floatingActionButton: Builder(
-                builder: (context) => FloatingActionButton.extended(
-                  onPressed: () async {
-                    logFirebaseEvent(
-                        'C1_DECK_LIST_FloatingActionButton_5531ea');
-                    logFirebaseEvent('FloatingActionButton_alert_dialog');
-                    await showDialog(
-                      context: context,
-                      builder: (dialogContext) {
-                        return Dialog(
-                          insetPadding: EdgeInsets.zero,
-                          backgroundColor: Colors.transparent,
-                          alignment: AlignmentDirectional(0.0, 0.0)
-                              .resolve(Directionality.of(context)),
-                          child: GestureDetector(
-                            onTap: () => _model.unfocusNode.canRequestFocus
-                                ? FocusScope.of(context)
-                                    .requestFocus(_model.unfocusNode)
-                                : FocusScope.of(context).unfocus(),
-                            child: DeckFormWidget(),
-                          ),
-                        );
-                      },
-                    ).then((value) => setState(() {}));
-                  },
-                  backgroundColor: FlutterFlowTheme.of(context).primary,
-                  icon: Icon(
-                    Icons.add,
-                  ),
-                  elevation: 8.0,
-                  label: Text(
-                    FFLocalizations.of(context).getText(
-                      'xyd4oyif' /* Add deck */,
-                    ),
-                    style: FlutterFlowTheme.of(context).bodyMedium.override(
-                          fontFamily: 'Noto Sans',
-                          fontWeight: FontWeight.w500,
-                        ),
-                  ),
-                ),
-              ),
-              appBar: AppBar(
-                backgroundColor: FlutterFlowTheme.of(context).primary,
-                automaticallyImplyLeading: false,
-                leading: FlutterFlowIconButton(
-                  borderColor: Colors.transparent,
-                  borderRadius: 30.0,
-                  borderWidth: 1.0,
-                  buttonSize: 60.0,
-                  icon: Icon(
-                    Icons.arrow_back_rounded,
-                    color: Colors.white,
-                    size: 30.0,
-                  ),
-                  onPressed: () async {
-                    logFirebaseEvent(
-                        'C1_DECK_LIST_arrow_back_rounded_ICN_ON_T');
-                    logFirebaseEvent('IconButton_navigate_back');
-                    context.pop();
-                  },
-                ),
-                title: Text(
-                  FFLocalizations.of(context).getText(
-                    '8oyacj3o' /* DECKS */,
-                  ),
-                  style: FlutterFlowTheme.of(context).titleLarge,
-                ),
-                actions: [],
-                centerTitle: true,
-                elevation: 2.0,
-              ),
-              body: SafeArea(
-                top: true,
-                child: Container(
-                  width: MediaQuery.sizeOf(context).width * 1.0,
-                  height: MediaQuery.sizeOf(context).height * 1.0,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF323236), Color(0xFFE6486F)],
-                      stops: [0.0, 1.0],
-                      begin: AlignmentDirectional(0.0, -1.0),
-                      end: AlignmentDirectional(0, 1.0),
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      if (true)
-                        Padding(
-                          padding: EdgeInsetsDirectional.fromSTEB(
-                              0.0, 8.0, 0.0, 0.0),
-                          child: FutureBuilder<Set<String>>(
-                            future: _memberIdsFuture ??=
-                                _fetchMemberCrewmateIds(),
-                            builder: (context, crewSnap) {
-                              // For a real crew: the Firestore query returns all
-                              // crew decks (including opponents'); filter to
-                              // real members only.
-                              // For solo import: decks are already scoped to
-                              // the user's crewmate IDs by the whereIn query.
-                              final visibleDecks = (crewId.isNotEmpty &&
-                                      memberIds != null)
-                                  ? c1DeckListDecksRecordList
-                                      .where((d) =>
-                                          d.crewmateId.isEmpty ||
-                                          memberIds.contains(d.crewmateId))
-                                      .toList()
-                                  : c1DeckListDecksRecordList;
-
-                              // Partition into templates (canonical per-player
-                              // decks) and snapshots (per-tournament imports).
-                              final templates = visibleDecks
-                                  .where((d) =>
-                                      d.hasIsTemplate() && d.isTemplate)
-                                  .toList();
-                              final snapshots = visibleDecks
-                                  .where((d) =>
-                                      !d.hasIsTemplate() || !d.isTemplate)
-                                  .toList();
-
-                              // Snapshots not yet linked to any template →
-                              // shown individually in the DECKS view.
-                              final unlinkedSnapshots = snapshots
-                                  .where((s) => s.templateRef == null)
-                                  .toList();
-
-                              // DECKS view = templates + orphan snapshots.
-                              // TOURNOIS view = every snapshot individually.
-                              final deckList = _view == _DeckListView.templates
-                                  ? [...templates, ...unlinkedSnapshots]
-                                  : snapshots;
-
-                              // Update batch scores synchronously — load ALL
-                              // deck ids (templates + snapshots) so aggregate
-                              // computation in the inner builder has all data.
-                              _updateScoresFutureIfNeeded(visibleDecks.toList());
-
-                              return Column(
-                                children: [
-                                  _buildViewToggle(
-                                    context,
-                                    // DECKS count = distinct canonical entries
-                                    templatesCount: templates.length +
-                                        unlinkedSnapshots.length,
-                                    snapshotsCount: snapshots.length,
-                                  ),
-                                  Expanded(
-                                    child: deckList.isEmpty
-                                        ? _buildEmptyForView(context)
-                                        : FutureBuilder<Map<String, DeckScoreStruct>>(
-                                            future: _scoresFuture,
-                                            builder: (ctx, scoresSnap) {
-                                              final scoresMap = scoresSnap.data ?? {};
-                                              return ListView.builder(
-                                                padding: EdgeInsets.zero,
-                                                scrollDirection: Axis.vertical,
-                                                itemCount: deckList.length,
-                                                itemBuilder:
-                                                    (context, deckListIndex) {
-                                                  final deckListItem =
-                                                      deckList[deckListIndex];
-                                                  // In DECKS view, templates
-                                                  // get an aggregate score
-                                                  // summed across all linked
-                                                  // snapshots; unlinked
-                                                  // snapshots keep their own.
-                                                  final isTemplate =
-                                                      deckListItem.hasIsTemplate() &&
-                                                          deckListItem.isTemplate;
-                                                  final score = (_view ==
-                                                              _DeckListView
-                                                                  .templates &&
-                                                          isTemplate)
-                                                      ? _aggregateScore(
-                                                          deckListItem,
-                                                          snapshots,
-                                                          scoresMap)
-                                                      : scoresMap[
-                                                          deckListItem.deckId];
-
-                                                  final child = DeckViewWidget(
-                                                    key: Key(
-                                                        'Keyp06_${deckListIndex}_of_${deckList.length}'),
-                                                    deck: deckListItem,
-                                                    preloadedScore: score,
-                                                  );
-                                                  // Only real templates open
-                                                  // the snapshot history sheet.
-                                                  if (_view ==
-                                                          _DeckListView
-                                                              .templates &&
-                                                      isTemplate) {
-                                                    return GestureDetector(
-                                                      behavior: HitTestBehavior
-                                                          .opaque,
-                                                      onTap: () =>
-                                                          _showTemplateHistory(
-                                                              context,
-                                                              deckListItem),
-                                                      child: child,
-                                                    );
-                                                  }
-                                                  return child;
-                                                },
-                                              );
-                                            },
-                                          ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    },
+          },
         );
       },
     );
   }
 
-  /// Segmented toggle switching the list between snapshots (default) and
-  /// templates (canonical decks of the crew's players).
+  // ── DECKS view ─────────────────────────────────────────────────────────────
+
+  Widget _buildDecksView(BuildContext context, List<_DeckGroup> groups) {
+    if (groups.isEmpty) return _buildEmpty(context, isDecks: true);
+
+    return FutureBuilder<Map<String, DeckScoreStruct>>(
+      future: _scoresFuture,
+      builder: (ctx, scoresSnap) {
+        final rawScores = scoresSnap.data ?? {};
+        return ListView.builder(
+          padding: EdgeInsets.zero,
+          itemCount: groups.length,
+          itemBuilder: (ctx, i) {
+            final group = groups[i];
+            final score = _aggregateGroupScore(group, rawScores);
+            return DeckViewWidget(
+              key: Key('deck_group_$i'),
+              deck: group.representative,
+              preloadedScore: score,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ── TOURNOIS view ──────────────────────────────────────────────────────────
+
+  Widget _buildTournoisView(BuildContext context, List<DecksRecord> snapshots) {
+    if (snapshots.isEmpty) return _buildEmpty(context, isDecks: false);
+
+    return FutureBuilder<Map<String, DeckScoreStruct>>(
+      future: _tournamentScoresFuture,
+      builder: (ctx, scoresSnap) {
+        final scores = scoresSnap.data ?? {};
+
+        return FutureBuilder<Map<String, TournamentsRecord>>(
+          future: _tournamentInfoFuture,
+          builder: (ctx2, infoSnap) {
+            final tournamentInfo = infoSnap.data ?? {};
+
+            return ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: snapshots.length,
+              itemBuilder: (ctx3, i) {
+                final deck = snapshots[i];
+                final score = scores[deck.reference.id];
+                final tournament = tournamentInfo[deck.tournamentId];
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Tournament header row
+                    if (deck.tournamentId.isNotEmpty)
+                      _buildTournamentHeader(context, tournament, deck.tournamentId),
+                    DeckViewWidget(
+                      key: Key('tournoi_${deck.reference.id}'),
+                      deck: deck,
+                      preloadedScore: score,
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTournamentHeader(
+    BuildContext context,
+    TournamentsRecord? tournament,
+    String tournamentId,
+  ) {
+    final accent = FlutterFlowTheme.of(context).primaryText;
+    final name = tournament?.name.isNotEmpty == true
+        ? tournament!.name
+        : 'Tournoi $tournamentId';
+    final dateStr = tournament?.date != null
+        ? DateFormat('d MMM yyyy', 'fr').format(tournament!.date!)
+        : '';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 10, 16, 2),
+      child: Row(
+        children: [
+          Icon(Icons.emoji_events_outlined, size: 11, color: accent.withOpacity(0.45)),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              name,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Noto Sans',
+                color: accent.withOpacity(0.55),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+          if (dateStr.isNotEmpty)
+            Text(
+              dateStr,
+              style: TextStyle(
+                fontFamily: 'Noto Sans',
+                color: accent.withOpacity(0.35),
+                fontSize: 10,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Toggle ─────────────────────────────────────────────────────────────────
+
   Widget _buildViewToggle(
     BuildContext context, {
-    required int templatesCount,
-    required int snapshotsCount,
+    required int decksCount,
+    required int tournoisCount,
   }) {
     final accent = FlutterFlowTheme.of(context).primaryText;
+
     Widget chip(String label, int count, _DeckListView target) {
       final selected = _view == target;
       return Expanded(
         child: GestureDetector(
-          onTap: () => setState(() => _view = target),
+          onTap: () => setState(() {
+            _view = target;
+            if (target == _DeckListView.tournois) {
+              // Trigger per-tournament score + info loads on first switch
+              _scoredSnapshotRefIds = [];
+              _loadedTournamentIds = [];
+            }
+          }),
           child: Container(
-            padding: EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: selected
-                  ? accent.withOpacity(0.16)
-                  : Colors.transparent,
+              color: selected ? accent.withOpacity(0.16) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
@@ -551,8 +719,7 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
                 fontFamily: 'Noto Sans',
                 color: selected ? accent : accent.withOpacity(0.55),
                 fontSize: 12,
-                fontWeight:
-                    selected ? FontWeight.bold : FontWeight.w500,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
                 letterSpacing: 0.6,
               ),
             ),
@@ -562,9 +729,9 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
     }
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Container(
-        padding: EdgeInsets.all(4),
+        padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.3),
           borderRadius: BorderRadius.circular(10),
@@ -572,232 +739,51 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
         ),
         child: Row(
           children: [
-            chip('DECKS', templatesCount, _DeckListView.templates),
-            chip('TOURNOIS', snapshotsCount, _DeckListView.snapshots),
+            chip('DECKS', decksCount, _DeckListView.decks),
+            chip('TOURNOIS', tournoisCount, _DeckListView.tournois),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEmptyForView(BuildContext context) {
-    final isDecksView = _view == _DeckListView.templates;
+  // ── Empty state ────────────────────────────────────────────────────────────
+
+  Widget _buildEmpty(BuildContext context, {required bool isDecks}) {
     return Padding(
-      padding: EdgeInsets.all(32),
+      padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isDecksView ? Icons.style_outlined : Icons.auto_awesome_outlined,
+            isDecks ? Icons.style_outlined : Icons.auto_awesome_outlined,
             color: FlutterFlowTheme.of(context).secondaryText,
             size: 56,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
-            isDecksView ? 'Aucun deck' : 'Aucun tournoi',
+            isDecks ? 'Aucun deck' : 'Aucun tournoi',
             textAlign: TextAlign.center,
             style: FlutterFlowTheme.of(context).bodyMedium.override(
-                  fontFamily: 'Cinzel Decorative',
-                  color: FlutterFlowTheme.of(context).primaryText,
-                  fontSize: 16,
-                ),
+              fontFamily: 'Cinzel Decorative',
+              color: FlutterFlowTheme.of(context).primaryText,
+              fontSize: 16,
+            ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
-            isDecksView
+            isDecks
                 ? 'Importe un tournoi Spicerack ou ajoute un deck manuellement.'
                 : 'Importe un tournoi Spicerack pour voir tes decks par tournoi.',
             textAlign: TextAlign.center,
             style: FlutterFlowTheme.of(context).bodySmall.override(
-                  fontFamily: 'Noto Sans',
-                  color: FlutterFlowTheme.of(context)
-                      .primaryText
-                      .withOpacity(0.55),
-                  fontSize: 12,
-                ),
+              fontFamily: 'Noto Sans',
+              color: FlutterFlowTheme.of(context).primaryText.withOpacity(0.55),
+              fontSize: 12,
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  /// Bottom sheet that lists every snapshot linked to the given template via
-  /// `templateRef == template.reference`. Lightweight stand-in for the full
-  /// deck_detail page — can be replaced with a dedicated route later.
-  Future<void> _showTemplateHistory(
-    BuildContext context,
-    DecksRecord template,
-  ) async {
-    final accent = FlutterFlowTheme.of(context).primaryText;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: FlutterFlowTheme.of(context).primary,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetCtx) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            12,
-            16,
-            16 + MediaQuery.of(sheetCtx).viewInsets.bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: accent.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  if (template.hasAvatarUrl() && template.avatarUrl.isNotEmpty)
-                    ClipOval(
-                      child: Image.network(
-                        template.avatarUrl,
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            SizedBox(width: 40, height: 40),
-                      ),
-                    ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          template.name,
-                          style: FlutterFlowTheme.of(context)
-                              .titleMedium
-                              .override(
-                                fontFamily: 'Cinzel Decorative',
-                                color: accent,
-                                fontSize: 18,
-                              ),
-                        ),
-                        if (template.avatarName.isNotEmpty)
-                          Text(
-                            template.avatarName,
-                            style: TextStyle(
-                              fontFamily: 'Noto Sans',
-                              color: accent.withOpacity(0.7),
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 14),
-              Divider(
-                height: 1,
-                color: accent.withOpacity(0.15),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'SNAPSHOTS LINKED',
-                style: TextStyle(
-                  fontFamily: 'Noto Sans',
-                  color: accent.withOpacity(0.55),
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              SizedBox(height: 8),
-              Flexible(
-                child: FutureBuilder<List<DecksRecord>>(
-                  future: queryDecksRecordOnce(
-                    queryBuilder: (q) =>
-                        q.where('templateRef', isEqualTo: template.reference),
-                  ),
-                  builder: (ctx, snap) {
-                    if (!snap.hasData) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Center(
-                          child: SpinKitFadingFour(
-                            color: Color(0xFFE6486F),
-                            size: 28,
-                          ),
-                        ),
-                      );
-                    }
-                    final snapshots = snap.data!;
-                    if (snapshots.isEmpty) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(vertical: 18),
-                        child: Text(
-                          'No snapshots yet. Tag a tournament deck as "this is my deck" to link it here.',
-                          style: TextStyle(
-                            fontFamily: 'Noto Sans',
-                            color: accent.withOpacity(0.6),
-                            fontSize: 12,
-                          ),
-                        ),
-                      );
-                    }
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: snapshots.length,
-                      itemBuilder: (_, i) {
-                        final s = snapshots[i];
-                        return Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            children: [
-                              Icon(Icons.bookmark_outline,
-                                  size: 16,
-                                  color: accent.withOpacity(0.55)),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  s.name.isNotEmpty
-                                      ? s.name
-                                      : s.avatarName,
-                                  style: TextStyle(
-                                    fontFamily: 'Noto Sans',
-                                    color: accent.withOpacity(0.85),
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                              if (s.hasSpicerackDecklistId() &&
-                                  s.spicerackDecklistId > 0)
-                                Text(
-                                  '#${s.spicerackDecklistId}',
-                                  style: TextStyle(
-                                    fontFamily: 'Noto Sans',
-                                    color: accent.withOpacity(0.35),
-                                    fontSize: 10,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
