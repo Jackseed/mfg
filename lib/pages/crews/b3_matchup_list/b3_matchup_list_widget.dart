@@ -20,6 +20,8 @@ class _MatchupPageData {
   final Map<String, String> crewmateNameMap;
   final Set<String> myDeckIds;
   final Map<String, DateTime> matchupDateMap;
+  // Most recent game date per tournamentId — built from GamesRecord.date, no async needed.
+  final Map<String, DateTime> tournamentDateMap;
 
   const _MatchupPageData({
     required this.decks,
@@ -27,6 +29,7 @@ class _MatchupPageData {
     required this.crewmateNameMap,
     required this.myDeckIds,
     required this.matchupDateMap,
+    required this.tournamentDateMap,
   });
 }
 
@@ -90,23 +93,18 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
   String? _lastCrewmateId;
   Future<_MatchupPageData>? _pageDataFuture;
 
-  // Tournament cache: name and date loaded together from the same document read.
+  // Tournament name cache (tournamentId → name, null while loading).
+  // Dates come from games already loaded in _loadPageData — no async needed.
   final Map<String, String?> _tournamentNames = {};
-  final Map<String, DateTime?> _tournamentDates = {};
 
   void _loadTournamentName(String tournId, DocumentReference? ref) {
     if (_tournamentNames.containsKey(tournId)) return;
     _tournamentNames[tournId] = null;
-    _tournamentDates[tournId] = null;
     if (ref == null) return;
     ref.get().then((doc) {
-      final d = doc.data() as Map<String, dynamic>?;
-      final name = d?['name'] as String?;
-      final date = d?['date'] as DateTime?;
-      if (mounted) setState(() {
-        _tournamentNames[tournId] = name;
-        _tournamentDates[tournId] = date;
-      });
+      final name =
+          (doc.data() as Map<String, dynamic>?)?['name'] as String?;
+      if (mounted) setState(() => _tournamentNames[tournId] = name);
     }).catchError((_) {});
   }
 
@@ -240,6 +238,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
                   : myCrewmateIds.take(30).toList()),
     );
     final matchupDateMap = <String, DateTime>{};
+    final tournamentDateMap = <String, DateTime>{};
     for (final g in games) {
       if (g.date == null) continue;
       void _store(String key) {
@@ -249,10 +248,16 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
           matchupDateMap[key] = g.date!;
         }
       }
-      // Index by matchupId string field AND by matchupRef doc ID so both
-      // lookup strategies work regardless of how the game was recorded.
       _store(g.matchupId);
       if (g.matchupRef != null) _store(g.matchupRef!.id);
+      // Also index by tournamentId so matchups without a direct game-date
+      // lookup can fall back to the most recent game date in that tournament.
+      if (g.tournamentId.isNotEmpty) {
+        final existing = tournamentDateMap[g.tournamentId];
+        if (existing == null || g.date!.isAfter(existing)) {
+          tournamentDateMap[g.tournamentId] = g.date!;
+        }
+      }
     }
 
     return _MatchupPageData(
@@ -261,6 +266,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
       crewmateNameMap: crewmateNameMap,
       myDeckIds: myDeckIds,
       matchupDateMap: matchupDateMap,
+      tournamentDateMap: tournamentDateMap,
     );
   }
 
@@ -276,7 +282,8 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
   /// Sort: newest first, then round descending.
   DateTime? _matchupDate(MatchupsRecord m, _MatchupPageData data) =>
       data.matchupDateMap[m.matchupId.isNotEmpty ? m.matchupId : '__']
-          ?? data.matchupDateMap[m.reference.id];
+          ?? data.matchupDateMap[m.reference.id]
+          ?? (m.tournamentId.isNotEmpty ? data.tournamentDateMap[m.tournamentId] : null);
 
   List<MatchupsRecord> _sorted(
       List<MatchupsRecord> raw, _MatchupPageData data) {
@@ -967,9 +974,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     // Group by "YYYY-MM-DD|tournamentId"
     final grouped = <String, List<MatchupsRecord>>{};
     for (final m in matchups) {
-      // Try game-based date first; fall back to the tournament's own date field.
-      final date = _matchupDate(m, data)
-          ?? (m.tournamentId.isNotEmpty ? _tournamentDates[m.tournamentId] : null);
+      final date = _matchupDate(m, data);
       final dateKey = date != null
           ? '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}'
           : '0000-00-00';
