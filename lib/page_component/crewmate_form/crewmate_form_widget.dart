@@ -197,29 +197,45 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                   });
                 } else {
                   if (widget.existingName != 'empty') {
-                    // Get existing crewmate
-                    logFirebaseEvent('Button_Getexistingcrewmate');
-                    _model.crewmateDocBeforeNameChange =
-                        await queryCrewmatesRecordOnce(
-                      parent: widget.crewRef,
-                      queryBuilder: (crewmatesRecord) => crewmatesRecord.where(
-                        'name',
-                        isEqualTo: widget.existingName,
-                      ),
-                      singleRecord: true,
-                    ).then((s) => s.firstOrNull);
-                    // Update crewmate name
-                    logFirebaseEvent('Button_Updatecrewmatename');
-
-                    await widget.crewmateRef!.update(createCrewmatesRecordData(
-                      name: _model.nameInputController.text,
-                    ));
-                    if (_model.crewmateDocBeforeNameChange?.userId != null &&
-                        _model.crewmateDocBeforeNameChange?.userId != '') {
-                      // Update user name
-                      logFirebaseEvent('Button_Updateusername');
-
-                      await _model.crewmateDocBeforeNameChange!.userReference!
+                    if (widget.crewRef != null) {
+                      // Standard crew user: find crewmate by name then update.
+                      logFirebaseEvent('Button_Getexistingcrewmate');
+                      _model.crewmateDocBeforeNameChange =
+                          await queryCrewmatesRecordOnce(
+                        parent: widget.crewRef,
+                        queryBuilder: (crewmatesRecord) =>
+                            crewmatesRecord.where(
+                          'name',
+                          isEqualTo: widget.existingName,
+                        ),
+                        singleRecord: true,
+                      ).then((s) => s.firstOrNull);
+                      logFirebaseEvent('Button_Updatecrewmatename');
+                      await widget.crewmateRef!
+                          .update(createCrewmatesRecordData(
+                        name: _model.nameInputController.text,
+                      ));
+                      if (_model.crewmateDocBeforeNameChange?.userId != null &&
+                          _model.crewmateDocBeforeNameChange?.userId != '') {
+                        logFirebaseEvent('Button_Updateusername');
+                        await _model
+                            .crewmateDocBeforeNameChange!.userReference!
+                            .update(createUsersRecordData(
+                          name: _model.nameInputController.text,
+                        ));
+                      }
+                    } else {
+                      // Spicerack-only user: no crew, update directly.
+                      logFirebaseEvent('Button_Updatecrewmatename_spicerack');
+                      if (widget.crewmateRef != null) {
+                        await widget.crewmateRef!
+                            .update(createCrewmatesRecordData(
+                          name: _model.nameInputController.text,
+                        ));
+                      }
+                      // Always update the user document name.
+                      logFirebaseEvent('Button_Updateusername_spicerack');
+                      await currentUserReference!
                           .update(createUsersRecordData(
                         name: _model.nameInputController.text,
                       ));
