@@ -234,11 +234,18 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     );
     final matchupDateMap = <String, DateTime>{};
     for (final g in games) {
-      if (g.matchupId.isEmpty || g.date == null) continue;
-      final existing = matchupDateMap[g.matchupId];
-      if (existing == null || g.date!.isAfter(existing)) {
-        matchupDateMap[g.matchupId] = g.date!;
+      if (g.date == null) continue;
+      void _store(String key) {
+        if (key.isEmpty) return;
+        final existing = matchupDateMap[key];
+        if (existing == null || g.date!.isAfter(existing)) {
+          matchupDateMap[key] = g.date!;
+        }
       }
+      // Index by matchupId string field AND by matchupRef doc ID so both
+      // lookup strategies work regardless of how the game was recorded.
+      _store(g.matchupId);
+      if (g.matchupRef != null) _store(g.matchupRef!.id);
     }
 
     return _MatchupPageData(
@@ -260,12 +267,16 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
   }
 
   /// Sort: newest first, then round descending.
+  DateTime? _matchupDate(MatchupsRecord m, _MatchupPageData data) =>
+      data.matchupDateMap[m.matchupId.isNotEmpty ? m.matchupId : '__']
+          ?? data.matchupDateMap[m.reference.id];
+
   List<MatchupsRecord> _sorted(
       List<MatchupsRecord> raw, _MatchupPageData data) {
     return [...raw]
       ..sort((a, b) {
-        final da = data.matchupDateMap[a.matchupId];
-        final db = data.matchupDateMap[b.matchupId];
+        final da = _matchupDate(a, data);
+        final db = _matchupDate(b, data);
         if (da == null && db == null) return b.round.compareTo(a.round);
         if (da == null) return 1;
         if (db == null) return -1;
@@ -949,7 +960,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     // Group by "YYYY-MM-DD|tournamentId"
     final grouped = <String, List<MatchupsRecord>>{};
     for (final m in matchups) {
-      final date = data.matchupDateMap[m.matchupId];
+      final date = _matchupDate(m, data);
       final dateKey = date != null
           ? '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}'
           : '0000-00-00';
