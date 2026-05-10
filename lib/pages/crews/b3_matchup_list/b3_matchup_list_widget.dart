@@ -3,6 +3,7 @@ import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/custom_icons.dart';
+import '/page_component/deck_edit/deck_edit_widget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -458,19 +459,12 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     final resultText = result == null
         ? '—'
         : result > 0
-            ? 'WIN'
+            ? FFLocalizations.of(context).getVariableText(enText: 'WIN', frText: 'VIC')
             : result < 0
-                ? 'LOSS'
-                : 'DRAW';
+                ? FFLocalizations.of(context).getVariableText(enText: 'LOSS', frText: 'DEF')
+                : FFLocalizations.of(context).getVariableText(enText: 'DRAW', frText: 'NUL');
 
-    return InkWell(
-      onTap: () {
-        logFirebaseEvent('B3_MATCHUP_LIST_PAGE_GameItem_ON_TAP');
-        context.pushNamed('B4_MatchupView', queryParameters: {
-          'matchupId': serializeParam(matchup.matchupId, ParamType.String),
-        }.withoutNulls);
-      },
-      child: Container(
+    return Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
@@ -520,7 +514,6 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -534,7 +527,29 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     final label = _deckLabel(deck);
     final colors = deck?.colors ?? [];
 
-    final avatar = _deckAvatar(context, deck, label);
+    final isCurrentUser =
+        deck != null && deck.crewmateId == currentUserDocument?.crewmateRef?.id;
+    final avatar = isCurrentUser
+        ? GestureDetector(
+            onTap: () => showDialog(
+              context: context,
+              builder: (dialogContext) => Dialog(
+                insetPadding: EdgeInsets.zero,
+                backgroundColor: Colors.transparent,
+                alignment: AlignmentDirectional(0.0, 0.0)
+                    .resolve(Directionality.of(context)),
+                child: GestureDetector(
+                  onTap: () => FocusScope.of(context).unfocus(),
+                  child: DeckEditWidget(
+                    title: FFLocalizations.of(context).getText('x8wz0s6u'),
+                    editedDeck: deck,
+                  ),
+                ),
+              ),
+            ).then((_) => setState(() {})),
+            child: _deckAvatar(context, deck, label),
+          )
+        : _deckAvatar(context, deck, label);
 
     final scoreWidget = Text('$score',
         style: FlutterFlowTheme.of(context).headlineSmall.override(
@@ -1000,7 +1015,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
             final pageData = dataSnap.data!;
 
             // AppBar title changes in drill-down
-            String appBarTitle = 'Matchups';
+            String appBarTitle = 'Parties';
             if (_selectedArchetype != null) {
               appBarTitle =
                   '${_selectedArchetype!.myArchetype} vs ${_selectedArchetype!.oppArchetype}';
@@ -1015,7 +1030,8 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
               child: Scaffold(
                 key: scaffoldKey,
                 backgroundColor: FlutterFlowTheme.of(context).alternate,
-                floatingActionButton: _tabController.index == 0
+                floatingActionButton: _tabController.index == 0 &&
+                        valueOrDefault(currentUserDocument?.crewId, '') != ''
                     ? FloatingActionButton.extended(
                         onPressed: () {
                           logFirebaseEvent(
@@ -1073,7 +1089,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
                             fontWeight: FontWeight.w600,
                           ),
                           tabs: const [
-                            Tab(text: 'Parties'),
+                            Tab(text: 'Toutes'),
                             Tab(text: 'Matchups'),
                             Tab(text: 'Joueurs'),
                           ],

@@ -277,8 +277,8 @@ final kTranslationsMap = <Map<String, Map<String, String>>>[
   // B3_MatchupList
   {
     '1q1aupjz': {
-      'en': 'Matchups',
-      'fr': 'Matchups',
+      'en': 'Parties',
+      'fr': 'Parties',
     },
     'kpx4xw60': {
       'en': 'Add match',
