@@ -255,8 +255,8 @@ class _DCrewmateListWidgetState extends State<DCrewmateListWidget> {
                                                     ''),
                                                 crewmateRef: currentUserDocument
                                                     ?.crewmateRef,
-                                                crewRef: currentUserDocument!
-                                                    .crewRef!,
+                                                crewRef: currentUserDocument
+                                                    ?.crewRef,
                                               ),
                                             ),
                                           );
