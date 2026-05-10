@@ -90,16 +90,23 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
   String? _lastCrewmateId;
   Future<_MatchupPageData>? _pageDataFuture;
 
-  // Tournament name cache (tournamentId → name, null while loading)
+  // Tournament cache: name and date loaded together from the same document read.
   final Map<String, String?> _tournamentNames = {};
+  final Map<String, DateTime?> _tournamentDates = {};
 
   void _loadTournamentName(String tournId, DocumentReference? ref) {
     if (_tournamentNames.containsKey(tournId)) return;
     _tournamentNames[tournId] = null;
+    _tournamentDates[tournId] = null;
     if (ref == null) return;
     ref.get().then((doc) {
-      final name = (doc.data() as Map<String, dynamic>?)?['name'] as String?;
-      if (mounted) setState(() => _tournamentNames[tournId] = name);
+      final d = doc.data() as Map<String, dynamic>?;
+      final name = d?['name'] as String?;
+      final date = d?['date'] as DateTime?;
+      if (mounted) setState(() {
+        _tournamentNames[tournId] = name;
+        _tournamentDates[tournId] = date;
+      });
     }).catchError((_) {});
   }
 
@@ -960,7 +967,9 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     // Group by "YYYY-MM-DD|tournamentId"
     final grouped = <String, List<MatchupsRecord>>{};
     for (final m in matchups) {
-      final date = _matchupDate(m, data);
+      // Try game-based date first; fall back to the tournament's own date field.
+      final date = _matchupDate(m, data)
+          ?? (m.tournamentId.isNotEmpty ? _tournamentDates[m.tournamentId] : null);
       final dateKey = date != null
           ? '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}'
           : '0000-00-00';
