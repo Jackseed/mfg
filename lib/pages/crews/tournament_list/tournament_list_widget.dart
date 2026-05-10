@@ -3,6 +3,7 @@ import '/backend/backend.dart';
 import '/backend/stats/tournament_stats.dart' as stats;
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -102,6 +103,22 @@ class _TournamentListWidgetState extends State<TournamentListWidget> {
           allCrewmateIds.add(cm.reference.id);
           allCrewIds.add(cm.parentReference.id);
         }
+      }
+
+      // Fallback for Spicerack-only users who have no crewmateRef set:
+      // locate their crewmates via a collection-group query on userReference.
+      // This also populates allCrewIds so the deck query finds their decks.
+      if (allCrewmateIds.isEmpty && currentUserReference != null) {
+        try {
+          final snap = await FirebaseFirestore.instance
+              .collectionGroup('crewmates')
+              .where('userReference', isEqualTo: currentUserReference)
+              .get();
+          for (final doc in snap.docs) {
+            allCrewmateIds.add(doc.id);
+            allCrewIds.add(doc.reference.parent.parent!.id);
+          }
+        } catch (_) {}
       }
 
       // Also pick up the user's organization memberships (Spicerack-scoped
@@ -315,7 +332,7 @@ class _TournamentListWidgetState extends State<TournamentListWidget> {
           backgroundColor: FlutterFlowTheme.of(context).primary,
           automaticallyImplyLeading: true,
           title: Text(
-            'Tournaments',
+            FFLocalizations.of(context).getText('tourntit1'),
             style: FlutterFlowTheme.of(context).titleLarge.override(
                   fontFamily: 'Cinzel Decorative',
                   fontSize: 24.0,
@@ -490,7 +507,7 @@ class _TournamentListWidgetState extends State<TournamentListWidget> {
                 color: FlutterFlowTheme.of(context).secondaryText, size: 80),
             SizedBox(height: 16),
             Text(
-              'No tournaments yet',
+              FFLocalizations.of(context).getText('notouryt1'),
               style: FlutterFlowTheme.of(context).titleMedium.override(
                     fontFamily: 'Cinzel Decorative',
                     color: FlutterFlowTheme.of(context).primaryText,
@@ -500,7 +517,7 @@ class _TournamentListWidgetState extends State<TournamentListWidget> {
             ),
             SizedBox(height: 8),
             Text(
-              'Import your tournament history from Spicerack to see your results here.',
+              FFLocalizations.of(context).getText('importtr1'),
               style: FlutterFlowTheme.of(context).bodyMedium.override(
                     fontFamily: 'Noto Sans',
                     color: FlutterFlowTheme.of(context)

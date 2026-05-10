@@ -724,8 +724,8 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
         ),
         child: Row(
           children: [
-            chip('DECKS', decksCount, _DeckListView.decks),
-            chip('TOURNOIS', tournoisCount, _DeckListView.tournois),
+            chip(FFLocalizations.of(context).getText('deckstb01'), decksCount, _DeckListView.decks),
+            chip(FFLocalizations.of(context).getText('tourntb02'), tournoisCount, _DeckListView.tournois),
           ],
         ),
       ),
@@ -747,7 +747,9 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
           ),
           const SizedBox(height: 12),
           Text(
-            isDecks ? 'Aucun deck' : 'Aucun tournoi',
+            isDecks
+                ? FFLocalizations.of(context).getText('emptydck1')
+                : FFLocalizations.of(context).getText('emptytrn1'),
             textAlign: TextAlign.center,
             style: FlutterFlowTheme.of(context).bodyMedium.override(
               fontFamily: 'Cinzel Decorative',
@@ -758,8 +760,8 @@ class _C1DeckListWidgetState extends State<C1DeckListWidget> {
           const SizedBox(height: 4),
           Text(
             isDecks
-                ? 'Importe un tournoi Spicerack ou ajoute un deck manuellement.'
-                : 'Importe un tournoi Spicerack pour voir tes decks par tournoi.',
+                ? FFLocalizations.of(context).getText('importdk1')
+                : FFLocalizations.of(context).getText('importtr1'),
             textAlign: TextAlign.center,
             style: FlutterFlowTheme.of(context).bodySmall.override(
               fontFamily: 'Noto Sans',

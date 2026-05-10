@@ -1068,6 +1068,67 @@ final kTranslationsMap = <Map<String, Map<String, String>>>[
       'en': 'Start a crew',
       'fr': 'Créer un crew',
     },
+    // ── New strings added for production cleanup ──────────────────────────────
+    'deckstb01': {
+      'en': 'DECKS',
+      'fr': 'DECKS',
+    },
+    'tourntb02': {
+      'en': 'TOURNOIS',
+      'fr': 'TOURNOIS',
+    },
+    'emptydck1': {
+      'en': 'No decks',
+      'fr': 'Aucun deck',
+    },
+    'emptytrn1': {
+      'en': 'No tournaments',
+      'fr': 'Aucun tournoi',
+    },
+    'importdk1': {
+      'en': 'Import a Spicerack tournament or add a deck manually.',
+      'fr': 'Importe un tournoi Spicerack ou ajoute un deck manuellement.',
+    },
+    'importtr1': {
+      'en': 'Import a Spicerack tournament to see your decks by tournament.',
+      'fr': 'Importe un tournoi Spicerack pour voir tes decks par tournoi.',
+    },
+    'tourntit1': {
+      'en': 'Tournaments',
+      'fr': 'Tournois',
+    },
+    'notouryt1': {
+      'en': 'No tournaments yet',
+      'fr': 'Pas encore de tournois',
+    },
+    'menutorn1': {
+      'en': 'TOURNAMENTS',
+      'fr': 'TOURNOIS',
+    },
+    'menusb01x': {
+      'en': 'Results & History',
+      'fr': 'Résultats & Historique',
+    },
+    'menuorg1x': {
+      'en': 'ORGANIZATIONS',
+      'fr': 'ORGANISATIONS',
+    },
+    'menusb02x': {
+      'en': 'LGS & leagues I belong to',
+      'fr': 'Mes LGS & ligues',
+    },
+    'menuimp1x': {
+      'en': 'IMPORT',
+      'fr': 'IMPORT',
+    },
+    'menusb03x': {
+      'en': 'From Spicerack',
+      'fr': 'Depuis Spicerack',
+    },
+    'spicrbtn1': {
+      'en': 'IMPORT SPICERACK',
+      'fr': 'IMPORTER SPICERACK',
+    },
     'wszgexls': {
       'en': '',
       'fr': '',

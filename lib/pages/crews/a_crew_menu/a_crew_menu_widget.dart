@@ -62,8 +62,9 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
         key: scaffoldKey,
         backgroundColor: FlutterFlowTheme.of(context).primary,
         floatingActionButton: Visibility(
-          visible: valueOrDefault(currentUserDocument?.crewId, '') != null &&
-              valueOrDefault(currentUserDocument?.crewId, '') != '',
+          visible: (valueOrDefault(currentUserDocument?.crewId, '') != null &&
+                  valueOrDefault(currentUserDocument?.crewId, '') != '') ||
+              (currentUserDocument?.organizationIds ?? []).isNotEmpty,
           child: AuthUserStreamWidget(
             builder: (context) => FloatingActionButton(
               onPressed: () async {
@@ -253,7 +254,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                   ),
                                   SizedBox(width: 12),
                                   Text(
-                                    'IMPORTER SPICERACK',
+                                    FFLocalizations.of(context).getText('spicrbtn1'),
                                     style: FlutterFlowTheme.of(context)
                                         .titleSmall
                                         .override(
@@ -445,7 +446,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                               EdgeInsetsDirectional.fromSTEB(
                                                   16.0, 0.0, 0.0, 0.0),
                                           child: Text(
-                                            'TOURNAMENTS',
+                                            FFLocalizations.of(context).getText('menutorn1'),
                                             textAlign: TextAlign.start,
                                             style: FlutterFlowTheme.of(context)
                                                 .titleLarge
@@ -461,7 +462,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                               EdgeInsetsDirectional.fromSTEB(
                                                   16.0, 4.0, 0.0, 0.0),
                                           child: Text(
-                                            'Results & History',
+                                            FFLocalizations.of(context).getText('menusb01x'),
                                             textAlign: TextAlign.center,
                                             style: FlutterFlowTheme.of(context)
                                                 .bodyMedium
@@ -539,7 +540,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                               EdgeInsetsDirectional.fromSTEB(
                                                   16.0, 0.0, 0.0, 0.0),
                                           child: Text(
-                                            'ORGANIZATIONS',
+                                            FFLocalizations.of(context).getText('menuorg1x'),
                                             textAlign: TextAlign.start,
                                             style: FlutterFlowTheme.of(context)
                                                 .titleLarge
@@ -555,7 +556,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                               EdgeInsetsDirectional.fromSTEB(
                                                   16.0, 4.0, 0.0, 0.0),
                                           child: Text(
-                                            'LGS & leagues I belong to',
+                                            FFLocalizations.of(context).getText('menusb02x'),
                                             textAlign: TextAlign.center,
                                             style: FlutterFlowTheme.of(context)
                                                 .bodyMedium
@@ -633,7 +634,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                               EdgeInsetsDirectional.fromSTEB(
                                                   16.0, 0.0, 0.0, 0.0),
                                           child: Text(
-                                            'IMPORT',
+                                            FFLocalizations.of(context).getText('menuimp1x'),
                                             textAlign: TextAlign.start,
                                             style: FlutterFlowTheme.of(context)
                                                 .titleLarge
@@ -649,7 +650,7 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                                               EdgeInsetsDirectional.fromSTEB(
                                                   16.0, 4.0, 0.0, 0.0),
                                           child: Text(
-                                            'From Spicerack',
+                                            FFLocalizations.of(context).getText('menusb03x'),
                                             textAlign: TextAlign.center,
                                             style: FlutterFlowTheme.of(context)
                                                 .bodyMedium
@@ -682,6 +683,120 @@ class _ACrewMenuWidgetState extends State<ACrewMenuWidget> {
                             ),
                           ),
                         ),
+                        // Crew creation/joining buttons — shown only for
+                        // Spicerack-only users who have not yet joined a crew.
+                        if (valueOrDefault(currentUserDocument?.crewId, '') == null ||
+                            valueOrDefault(currentUserDocument?.crewId, '') == '') ...[
+                          Builder(
+                            builder: (context) => FFButtonWidget(
+                              onPressed: () async {
+                                logFirebaseEvent('A_CREW_MENU_PAGE_Start_crew_has_ON_TAP');
+                                await showDialog(
+                                  context: context,
+                                  builder: (dialogContext) {
+                                    return Dialog(
+                                      insetPadding: EdgeInsets.zero,
+                                      backgroundColor: Colors.transparent,
+                                      alignment:
+                                          AlignmentDirectional(0.0, 0.0)
+                                              .resolve(
+                                                  Directionality.of(context)),
+                                      child: GestureDetector(
+                                        onTap: () =>
+                                            _model.unfocusNode.canRequestFocus
+                                                ? FocusScope.of(context)
+                                                    .requestFocus(
+                                                        _model.unfocusNode)
+                                                : FocusScope.of(context)
+                                                    .unfocus(),
+                                        child: CrewFormWidget(
+                                          formTitle:
+                                              FFLocalizations.of(context)
+                                                  .getText('wi0rsx03'),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ).then((value) => setState(() {}));
+                              },
+                              text: FFLocalizations.of(context)
+                                  .getText('v93oi4a3'),
+                              options: FFButtonOptions(
+                                width: 300.0,
+                                height: 60.0,
+                                padding: EdgeInsets.all(0.0),
+                                iconPadding: EdgeInsetsDirectional.fromSTEB(
+                                    0.0, 0.0, 0.0, 0.0),
+                                color: FlutterFlowTheme.of(context).primary,
+                                textStyle: FlutterFlowTheme.of(context)
+                                    .titleSmall
+                                    .override(
+                                      fontFamily: 'Cinzel Decorative',
+                                      color: Colors.white,
+                                      fontSize: 18.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                elevation: 3.0,
+                                borderSide: BorderSide(
+                                    color: Colors.transparent, width: 1.0),
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                            ),
+                          ),
+                          Builder(
+                            builder: (context) => FFButtonWidget(
+                              onPressed: () async {
+                                logFirebaseEvent('A_CREW_MENU_PAGE_Join_crew_has_ON_TAP');
+                                await showDialog(
+                                  context: context,
+                                  builder: (dialogContext) {
+                                    return Dialog(
+                                      insetPadding: EdgeInsets.zero,
+                                      backgroundColor: Colors.transparent,
+                                      alignment:
+                                          AlignmentDirectional(0.0, 0.0)
+                                              .resolve(
+                                                  Directionality.of(context)),
+                                      child: GestureDetector(
+                                        onTap: () =>
+                                            _model.unfocusNode.canRequestFocus
+                                                ? FocusScope.of(context)
+                                                    .requestFocus(
+                                                        _model.unfocusNode)
+                                                : FocusScope.of(context)
+                                                    .unfocus(),
+                                        child: JoinCrewWidget(),
+                                      ),
+                                    );
+                                  },
+                                ).then((value) => setState(() {}));
+                              },
+                              text: FFLocalizations.of(context)
+                                  .getText('6msyzyxf'),
+                              options: FFButtonOptions(
+                                width: 300.0,
+                                height: 60.0,
+                                padding: EdgeInsetsDirectional.fromSTEB(
+                                    24.0, 0.0, 24.0, 0.0),
+                                iconPadding: EdgeInsetsDirectional.fromSTEB(
+                                    0.0, 0.0, 0.0, 0.0),
+                                color: FlutterFlowTheme.of(context).primary,
+                                textStyle: FlutterFlowTheme.of(context)
+                                    .titleSmall
+                                    .override(
+                                      fontFamily: 'Cinzel Decorative',
+                                      color: Colors.white,
+                                      fontSize: 18.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                elevation: 3.0,
+                                borderSide: BorderSide(
+                                    color: Colors.transparent, width: 1.0),
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                            ),
+                          ),
+                        ],
                         InkWell(
                           splashColor: Colors.transparent,
                           focusColor: Colors.transparent,

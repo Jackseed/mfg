@@ -1,14 +1,10 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
-import '/flutter_flow/flutter_flow_checkbox_group.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
-import '/flutter_flow/flutter_flow_widgets.dart';
-import '/flutter_flow/form_field_controller.dart';
 import '/flutter_flow/custom_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:provider/provider.dart';
@@ -116,12 +112,6 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
     });
     logFirebaseEvent('screen_view',
         parameters: {'screen_name': 'B3_MatchupList'});
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        _model.isDeckFilterOpen = false;
-        _model.filteredDeckList = <String>[];
-      });
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
@@ -906,98 +896,15 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
   Widget _buildPartiesTab(
       BuildContext context,
       List<MatchupsRecord> allMatchups,
-      _MatchupPageData data,
-      List<String> deckNames) {
-    // Apply deck filter client-side
-    final selectedDeckIds = data.decks
-        .where((d) =>
-            _model.checkboxGroupValues != null &&
-            _model.checkboxGroupValues!.contains(d.name))
-        .map((d) => d.deckId)
-        .where((id) => id.isNotEmpty)
-        .toSet();
+      _MatchupPageData data) {
+    final matchups = _sorted(allMatchups, data);
 
-    final matchups = _sorted(
-      selectedDeckIds.isEmpty
-          ? allMatchups
-          : allMatchups
-              .where((m) => m.deckIds.any((id) => selectedDeckIds.contains(id)))
-              .toList(),
-      data,
-    );
+    if (matchups.isEmpty) return _buildEmptyState(context);
 
-    return Stack(
-      children: [
-        if (matchups.isEmpty)
-          _buildEmptyState(context)
-        else
-          ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 72, 16, 110),
-            itemCount: matchups.length,
-            itemBuilder: (ctx, i) => _buildMatchupCard(ctx, matchups[i], data),
-          ),
-        // Filter overlay
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FFButtonWidget(
-                onPressed: () => setState(
-                    () => _model.isDeckFilterOpen = !_model.isDeckFilterOpen),
-                text: FFLocalizations.of(context).getText('f5s9h70j'),
-                icon: const Icon(Icons.filter_list, size: 15),
-                options: FFButtonOptions(
-                  width: 150,
-                  height: 50,
-                  padding: EdgeInsetsDirectional.zero,
-                  iconPadding: EdgeInsetsDirectional.zero,
-                  color: const Color(0xFF645D5D),
-                  textStyle:
-                      FlutterFlowTheme.of(context).titleSmall.override(
-                            fontFamily: 'Cinzel Decorative',
-                            color: Colors.white,
-                            fontSize: 18,
-                          ),
-                  elevation: 3,
-                  borderSide:
-                      const BorderSide(color: Colors.transparent, width: 1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              if (_model.isDeckFilterOpen)
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF645D5D),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: FlutterFlowCheckboxGroup(
-                      options: deckNames,
-                      onChanged: (val) =>
-                          setState(() => _model.checkboxGroupValues = val),
-                      controller: _model.checkboxGroupValueController ??=
-                          FormFieldController<List<String>>([]),
-                      activeColor: FlutterFlowTheme.of(context).tertiary,
-                      checkColor: FlutterFlowTheme.of(context).primary,
-                      checkboxBorderColor:
-                          FlutterFlowTheme.of(context).tertiary,
-                      textStyle:
-                          FlutterFlowTheme.of(context).bodyLarge.override(
-                                fontFamily: 'Noto Sans',
-                                fontSize: 18,
-                              ),
-                      checkboxBorderRadius: BorderRadius.circular(4),
-                      initialized: _model.checkboxGroupValues != null,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+      itemCount: matchups.length,
+      itemBuilder: (ctx, i) => _buildMatchupCard(ctx, matchups[i], data),
     );
   }
 
@@ -1091,9 +998,6 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
             }
 
             final pageData = dataSnap.data!;
-            final deckNames = pageData.decks
-                .map((e) => e.name.isNotEmpty ? e.name : '--')
-                .toList();
 
             // AppBar title changes in drill-down
             String appBarTitle = 'Matchups';
@@ -1226,7 +1130,7 @@ class _B3MatchupListWidgetState extends State<B3MatchupListWidget>
                                 controller: _tabController,
                                 children: [
                                   _buildPartiesTab(
-                                      context, allMatchups, pageData, deckNames),
+                                      context, allMatchups, pageData),
                                   _buildMatchupsTab(
                                       context, allMatchups, pageData),
                                   _buildJoueursTab(
