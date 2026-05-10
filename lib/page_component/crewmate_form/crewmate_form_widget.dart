@@ -9,7 +9,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'crewmate_form_model.dart';
@@ -169,34 +168,39 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                     !_model.formKey.currentState!.validate()) {
                   return;
                 }
-                logFirebaseEvent('Button_firestore_query');
-                _model.crewmates = await queryCrewmatesRecordOnce(
-                  parent: currentUserDocument?.crewRef,
-                );
-                if (_model.crewmates!
-                    .map((e) => e.name)
-                    .toList()
-                    .contains(_model.nameInputController.text)) {
-                  // Name already taken
-                  logFirebaseEvent('Button_Namealreadytaken');
-                  setState(() {
-                    _model.showSnackbar = true;
-                    _model.snackbarMessage = valueOrDefault<String>(
-                      FFLocalizations.of(context).getVariableText(
-                        enText: 'Name already taken',
-                        frText: 'Pseudo déjà pris',
-                      ),
-                      'Name already taken',
-                    );
-                  });
-                  logFirebaseEvent('Button_wait__delay');
-                  await Future.delayed(const Duration(milliseconds: 4000));
-                  logFirebaseEvent('Button_update_component_state');
-                  setState(() {
-                    _model.showSnackbar = false;
-                  });
-                } else {
-                  if (widget.existingName != 'empty') {
+                // Duplicate-name check only applies within a crew namespace.
+                if (widget.crewRef != null) {
+                  logFirebaseEvent('Button_firestore_query');
+                  _model.crewmates = await queryCrewmatesRecordOnce(
+                    parent: widget.crewRef,
+                  );
+                  if (_model.crewmates!
+                      .map((e) => e.name)
+                      .toList()
+                      .contains(_model.nameInputController.text)) {
+                    // Name already taken
+                    logFirebaseEvent('Button_Namealreadytaken');
+                    setState(() {
+                      _model.showSnackbar = true;
+                      _model.snackbarMessage = valueOrDefault<String>(
+                        FFLocalizations.of(context).getVariableText(
+                          enText: 'Name already taken',
+                          frText: 'Pseudo déjà pris',
+                        ),
+                        'Name already taken',
+                      );
+                    });
+                    logFirebaseEvent('Button_wait__delay');
+                    await Future.delayed(const Duration(milliseconds: 4000));
+                    logFirebaseEvent('Button_update_component_state');
+                    setState(() {
+                      _model.showSnackbar = false;
+                    });
+                    setState(() {});
+                    return;
+                  }
+                }
+                if (widget.existingName != 'empty') {
                     if (widget.crewRef != null) {
                       // Standard crew user: find crewmate by name then update.
                       logFirebaseEvent('Button_Getexistingcrewmate');
@@ -225,11 +229,15 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                         ));
                       }
                     } else {
-                      // Spicerack-only user: no crew, update directly.
-                      logFirebaseEvent('Button_Updatecrewmatename_spicerack');
-                      if (widget.crewmateRef != null) {
-                        await widget.crewmateRef!
-                            .update(createCrewmatesRecordData(
+                      // Spicerack-only user: update all crewmate docs across orgs.
+                      logFirebaseEvent('Button_Updatecrewmates_spicerack');
+                      final snap = await FirebaseFirestore.instance
+                          .collectionGroup('crewmates')
+                          .where('userReference',
+                              isEqualTo: currentUserReference)
+                          .get();
+                      for (final doc in snap.docs) {
+                        await doc.reference.update(createCrewmatesRecordData(
                           name: _model.nameInputController.text,
                         ));
                       }
@@ -297,9 +305,8 @@ class _CrewmateFormWidgetState extends State<CrewmateFormWidget> {
                     );
                   }
 
-                  logFirebaseEvent('Button_close_dialog,_drawer,_etc');
-                  Navigator.pop(context);
-                }
+                logFirebaseEvent('Button_close_dialog,_drawer,_etc');
+                Navigator.pop(context);
 
                 setState(() {});
               },
